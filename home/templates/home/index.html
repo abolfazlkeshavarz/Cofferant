@@ -7,7 +7,7 @@
       <div class="header_section main-header">
          <div class="container">
             <nav class="navbar navbar-expand-lg navbar-light bg-light">
-               <a class="navbar-brand"href="index.html"><img src="{% static 'images/logo.png' %}"></a>
+               <a class="navbar-brand"href="{% url "home" %}"><img src="{% static 'images/logo.png' %}"></a>
                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                <span class="navbar-toggler-icon"></span>
                </button>
@@ -49,7 +49,7 @@
                                  <h1 class="banner_taital vazir-font" style="text-align:right;">کافی <br>شاپ</h1>
                                  <p class="banner_text vazir-font" style="margin-right:auto; font-size:26px; text-align:right; direction:rtl;">کافیرانت <br>پلتفرم آنلاین مدیریت کافه و رستوران</p>
                                  <div class="btn_main">
-                                    <div class="about_bt"><a style="font-size:26px" href="#" class="btn btn-info btn-lg active">درباره ما</a></div>
+                                    <div class="about_bt"><a style="font-size:26px" href="{% url "about" %}" class="btn btn-info btn-lg active">درباره ما</a></div>
                                     <div class="callnow_bt"><a class="btn btn-danger btn-lg active" style="font-size:26px" href="#">منو</a></div>
                                  </div>
                               </div>
@@ -63,7 +63,7 @@
                                  <h1 class="banner_taital" style="color:black;">Coffee<br>Shop</h1>
                                  <p class="banner_text" style="color:black;">Cofferant<br>Online Coffeshop and Restaurant Management Platform</p>
                                  <div class="btn_main">
-                                    <div class="about_bt active"><a class="btn btn-info btn-lg active" href="#">About Us</a></div>
+                                    <div class="about_bt active"><a class="btn btn-info btn-lg active" href="{% url "about" %}">About Us</a></div>
                                     <div class="callnow_bt"><a class="btn btn-danger btn-lg active" href="#">Menu</a></div>
                                  </div>
                               </div>
@@ -90,7 +90,7 @@
                <div class="row">
                   <div class="col-md-6"> 
                      <div class="about_taital_box">
-                        <h1 class="about_taital vazir-font">درباره ی کافه ی ما</h1>
+                        <h1 class="about_taital vazir-font">درباره ی کافیرانت</h1>
                         <p class=" about_text vazir-font">کافیرانت فعالیت خود را از سال 1403 در زمینه فروش دانه های قهوه آغاز کرد و در عرض چند ماه مفتخر این است که فرآورده هایی که از قهوه به دست میایند را به دست مشتری برساند</p>
                         <div class="readmore_btn"><a class="btn btn-outline-primary" href="{% url "about" %}">بیشتر</a></div>
                      </div>
