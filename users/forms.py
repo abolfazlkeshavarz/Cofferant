@@ -9,3 +9,7 @@ class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = CustomUser
         fields = UserCreationForm.Meta.fields + ('phone_number', 'address')
+
+class LoginForm(forms.Form):
+    username = forms.CharField(widget=forms.TextInput(), required=True)
+    password = forms.CharField(widget=forms.PasswordInput(), required=True)

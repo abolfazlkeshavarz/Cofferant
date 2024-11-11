@@ -1,0 +1,17 @@
+{% extends "home/base.html" %}
+{% load static %}
+<body>
+    {% block content %}
+    <div class="form-container">
+        <form method="POST" class='text-center mt-5 row justify-content-center'>
+            {% csrf_token %}
+            <label>Username:</label>
+            {{ form.username }}
+            <label>Password:</label>
+            {{form.password}}
+            <button class='btn btn-primary w-25' type="submit">LogIn</button></br>
+            <a class='py-3 text-info' href="{% url 'register' %}">Dont have Account? Create!</a>
+        </form>
+    </div>
+    {% endblock content %}
+</body>
