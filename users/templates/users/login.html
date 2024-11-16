@@ -36,18 +36,18 @@
          </nav>
       </div>
    </div>
-   <div style="padding-top:8%; background-color:#b1b1b1;">
+   <div style="padding-top:8%;padding-bottom:3%; background-color:#b1b1b1;">
       <div class="form-container">
-         <form method="POST" class='text-center row justify-content-center'>
+         <form method="POST" class='text-center row justify-content-center nazanin-font'>
             {% csrf_token %}
-            <label for="id_username" class="custom-fontsize-persian">:نام کاربری</label>
+            <label for="id_username" class="custom-fontsize-persian text-primary">:نام کاربری</label>
             {{ form.username }}
-            <label for="id_password" class="custom-fontsize-persian">:رمز عبور</label>
+            <label for="id_password" class="custom-fontsize-persian text-primary">:رمز عبور</label>
             {{form.password}}
             <button class='btn btn-primary w-100' type="submit">Login</button>
          </form>
          <div style="text-align:center; padding-top:10%;">
-            <a class='py-3 text-info custom-fontsize-persian' href="{% url 'register' %}">حساب کاربری ندارید؟ بسازید</a>
+            <a class='py-3 text-info custom-fontsize-persian nazanin-font' href="{% url 'register' %}">حساب کاربری ندارید؟ بسازید</a>
          </div>
       </div>
    </div>

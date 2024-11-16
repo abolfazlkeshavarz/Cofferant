@@ -231,7 +231,9 @@ button {
 .header_section.register-header {
     background-color: #2e2e2e;
 }
-
+.header_section.profile-header {
+    background-color: #2e2e2e;
+}
 .header_section {
     width: 100%;
     float: left;
@@ -1170,3 +1172,22 @@ textarea#comment.update_mail::placeholder {
 .custom-fontsize-persian {
     font-size: 20px;
 }
+
+
+.form-groupp {
+    display: flex;
+    align-items: center; /* Vertically aligns the label with the input */
+    margin-bottom: 15px; /* Adds space between form groups */
+ }
+ 
+ .form-groupp label {
+    width: 80px; /* Set a fixed width to align labels consistently */
+    margin-right: 10px; /* Space between label and input */
+ }
+ 
+ .form-groupp input[type="text"], .form-groupp select, .form-groupp input[type="file"] {
+    flex: 1; /* Allows the input to take the remaining width */
+    padding: 8px; /* Adds padding inside input fields */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+ }

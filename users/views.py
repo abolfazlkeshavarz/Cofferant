@@ -3,9 +3,9 @@ from .forms import CustomUserCreationForm, LoginForm
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import auth, messages
 from django.contrib.auth.decorators import login_required
+from management.forms import UserImage
+from management.models import Item
 # Create your views here.
-def profile(request):
-    return render(request, 'users/profile.html')
 
 def register(request):
     if request.method == 'POST':
@@ -27,7 +27,7 @@ def sign_in(request):
             user = authenticate(request, username=username, password=password)
             if user:
                 login(request, user)   
-                messages.success(request,'Logged In! Welcome:)')
+                messages.success(request,'Success')
                 return redirect('profile')
             else:
                 messages.warning(request, 'Username or Password is/are Incorrect :(')
@@ -39,8 +39,19 @@ def sign_in(request):
 
 @login_required
 def profile(request):
-    return render(request, 'users/profile.html')
-
+    if request.method == 'POST':  
+        form = UserImage(request.POST, request.FILES)  
+        if form.is_valid():  
+            form.save()  
+  
+            # Getting the current instance object to display in the template  
+            img_object = form.instance  
+              
+            return render(request, 'users/profile.html', {'form': form, 'img_obj': img_object})  
+    else:  
+        form = UserImage()  
+  
+    return render(request, 'users/profile.html', {'form': form})  
 
 def sign_out(request):
     logout(request)
