@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-&&^2mydf87-rd@(ql^bc*5q7j=t1%ormep4mc+rt@q*#5)huy0
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.104", "localhost","127.0.0.1"]
+ALLOWED_HOSTS = ["192.168.1.104", "localhost", "127.0.0.1", "coffeerant.abolfazl.fun"]
 
 
 # Application definition
@@ -138,3 +138,10 @@ MEDIA_URL = '/media/'
   
 # Path where media is stored  
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')  
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://coffeerant.abolfazl.fun',
+    'http://127.0.0.1:8000',
+
+]
+

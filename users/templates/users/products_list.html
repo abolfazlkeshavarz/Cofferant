@@ -1,0 +1,144 @@
+{% extends "home/base.html" %}
+{% load static %}
+{% load price_tags %}
+
+{% block content %}
+<style>
+/* اعمال فونت فارسی روی کل صفحه */
+body, * {
+    font-family: 'Vazir', sans-serif !important;
+}
+
+/* استایل‌های محصول */
+.product-card .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+.product-card .card-img-top {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  background: #f6f6f6;
+}
+
+.product-card .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  direction: rtl;
+  text-align: right;
+  padding: 1rem;
+}
+
+.category-title {
+  border-bottom: 2px solid #a0522d;
+  padding-bottom: 6px;
+  margin-top: 40px;
+  margin-bottom: 20px;
+}
+
+.price-tag {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #a0522d;
+}
+</style>
+
+
+<div class="container my-5">
+    <h1 class="text-center" dir="rtl" style="font-family: 'Vazir', sans-serif;">کاتالوگ محصولات Cofferant</h1>
+    <p class="text-center text-muted" dir="rtl">لیست محصولات (فقط قابل مشاهده برای کاربران ثبت‌نامی)</p>
+
+    {# اگر هیچ دسته‌ای وجود نداشت #}
+    {% if not types %}
+      <div class="row">
+        <div class="col-12">
+          <p class="text-center text-danger">در حال حاضر هیچ محصولی برای نمایش وجود ندارد.</p>
+        </div>
+      </div>
+    {% endif %}
+
+    {# منو تب (اختیاری) شبیه public_menu برای فیلتر سمت کاربر #}
+    <div class="my-3">
+      <ul class="nav nav-pills" id="categoryTabs">
+        <li class="nav-item"><a class="nav-link active" data-type="all" href="#">همه</a></li>
+        {% for type in types %}
+          <li class="nav-item"><a class="nav-link" data-type="{{ type.code }}" href="#type-{{ type.code }}">{{ type.label }} ({{ type.count }})</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    {# نمایش بر اساس دسته‌ها — استفاده از type.products به جای products عمومی #}
+    {% for type in types %}
+        <h2 class="category-title" id="type-{{ type.code }}">{{ type.label }}</h2>
+
+        <div class="row">
+            {% for product in type.products %}
+            <div class="col-xl-3 col-lg-4 col-md-6 product-card" data-type="{{ product.drink_type }}">
+                <div class="card shadow-sm {% if not product.is_available %}out-of-stock-card{% endif %}">
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                    {% else %}
+                    <img src="{% static 'images/placeholder.png' %}" class="card-img-top" alt="بدون تصویر">
+                    {% endif %}
+
+                    <div class="card-body">
+                        <div>
+                            <h5 class="card-title">{{ product.name }}</h5>
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="price-tag">{{ product.price_cents|money }} تومان</span>
+                                {% if product.customizable %}
+                                    <span class="badge badge-info">قابل سفارشی</span>
+                                {% endif %}
+                            </div>
+
+                            {% if product.specs %}
+                            <p class="card-text small text-muted">{{ product.specs|linebreaksbr }}</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="mt-2 text-center">
+                            {% if product.is_available %}
+                              <span class="text-secondary small">قابل مشاهده</span>
+                            {% else %}
+                              <span class="text-danger small">ناموجود</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  // فیلتر ساده بر اساس تب‌ها (شبیه public_menu)
+  document.querySelectorAll("#categoryTabs .nav-link").forEach(a => {
+    a.addEventListener("click", function(e){
+      e.preventDefault();
+      document.querySelectorAll("#categoryTabs .nav-link").forEach(n => n.classList.remove("active"));
+      this.classList.add("active");
+      const type = this.dataset.type;
+      document.querySelectorAll(".product-card").forEach(c => {
+        c.style.display = (type === "all" || c.dataset.type === type) ? "" : "none";
+      });
+      // اسکرول به بالا تا هدر دسته (برای پیوندهای دسته‌ای)
+      if (type !== "all") {
+        const el = document.getElementById("type-" + type);
+        if (el) el.scrollIntoView({behavior: "smooth", block: "start"});
+      }
+    });
+  });
+});
+</script>
+
+{% endblock content %}

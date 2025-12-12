@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.views.generic import ListView, CreateView, UpdateView
 from django.urls import reverse_lazy
@@ -10,6 +10,7 @@ from .forms import VendorItemForm, VendorTableForm
 
 # Dashboard
 @login_required
+@user_passes_test(lambda u: u.is_staff)
 def dashboard(request):
     ctx = {
         "items_count": Item.objects.count(),
@@ -63,6 +64,7 @@ class TableCreateView(CreateView):
 
 # Orders list and detail
 @login_required
+@user_passes_test(lambda u: u.is_staff)
 def orders_list(request):
     # 1. Get filter and sort parameters from URL
     status_filter = request.GET.get('status', 'all')  # Default: 'all'
@@ -90,6 +92,7 @@ def orders_list(request):
 
 
 @login_required
+@user_passes_test(lambda u: u.is_staff)
 def order_detail(request, pk):
     order = get_object_or_404(Order, pk=pk)
     return render(request, "vendor/order_detail.html", {"order": order})
@@ -97,6 +100,7 @@ def order_detail(request, pk):
 
 # Mark order completed (expects POST via fetch; returns JSON)
 @login_required
+@user_passes_test(lambda u: u.is_staff)
 def complete_order(request, pk):
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
