@@ -1,0 +1,13 @@
+{% extends "vendor/base_vendor.html" %}
+
+{% block vendor_content %}
+<div class="container mt-4" dir="rtl">
+  <h3 class="text-right">داشبورد مدیریت فروشگاه</h3>
+  <div class="row mt-3">
+    <div class="col-md-3 mb-3"><div class="card p-3"><h4>{{ items_count }}</h4><p>محصول</p><a href="{% url 'vendor:items' %}" class="btn btn-sm btn-primary">مدیریت</a></div></div>
+    <div class="col-md-3 mb-3"><div class="card p-3"><h4>{{ tables_count }}</h4><p>میز</p><a href="{% url 'vendor:tables' %}" class="btn btn-sm btn-primary">مدیریت</a></div></div>
+    <div class="col-md-3 mb-3"><div class="card p-3"><h4>{{ orders_count }}</h4><p>سفارش</p><a href="{% url 'vendor:orders' %}" class="btn btn-sm btn-primary">مشاهده</a></div></div>
+    <div class="col-md-3 mb-3"><div class="card p-3 bg-warning text-dark"><h4>{{ new_orders }}</h4><p>سفارش جدید</p><a href="{% url 'vendor:orders' %}" class="btn btn-sm btn-dark">مشاهده</a></div></div>
+  </div>
+</div>
+{% endblock %}

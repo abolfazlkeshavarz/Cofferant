@@ -1,0 +1,81 @@
+{% extends "home/base.html" %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.rtl.min.css">
+
+<style>
+    @font-face {
+        font-family: Vazir;
+        src: url("{% static 'fonts/Vazirmatn-Regular.ttf' %}") format("truetype");
+    }
+    @font-face {
+        font-family: Bnazanin;
+        src: url("{% static 'fonts/B-NAZANIN.TTF' %}") format("truetype");
+    }
+
+    body {
+        font-family: Vazir, Bnazanin, sans-serif !important;
+        direction: rtl;
+        text-align: right;
+        overflow-x: hidden;
+    }
+
+    /* Hide the website footer for vendor dashboard */
+    .footer_section, .copyright_section {
+        display: none !important;
+    }
+
+    .navbar-dark {
+        font-family: Vazir;
+    }
+
+    .vendor-wrapper {
+        padding-top: 20px;
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+<style>
+@font-face {
+  font-family: 'Vazir';
+  src: url("{% static 'fonts/Vazirmatn-Regular.woff2' %}") format("woff2"),
+       url("{% static 'fonts/Vazirmatn-Regular.woff' %}") format("woff"),
+       url("{% static 'fonts/Vazirmatn-Regular.ttf' %}") format("truetype");
+  font-display: swap;
+}
+.vendor-wrapper { font-family: 'Vazir', 'Bnazanin', sans-serif !important; direction: rtl; }
+</style>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 px-4">
+    <a class="navbar-brand vazir-font" href="/vendor">Management Panel</a>
+
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#vendorNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse vazir-font" id="vendorNav">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item"><a class="nav-link" href="{% url 'vendor:dashboard' %}">داشبورد</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'vendor:items' %}">محصولات</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'vendor:tables' %}">میزها</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'vendor:orders' %}">سفارش‌ها</a></li>
+        </ul>
+        {# --- آیتم جدید برای خروج (Logout) --- #}
+        <ul class="navbar-nav ml-auto"> 
+            {% if user.is_authenticated %}
+            <li class="nav-item">
+                <a class="nav-link text-danger font-weight-bold" href="{% url 'logout' %}">خروج</a> 
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+</nav>
+
+<div class="container vendor-wrapper">
+    {% block vendor_content %}{% endblock %}
+</div>
+
+{% endblock %}

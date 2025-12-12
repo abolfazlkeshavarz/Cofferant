@@ -1,0 +1,55 @@
+{% extends "home/base.html" %}
+{% load static %}
+
+<body>
+   {% block content %}
+   <div class="header_section register-header">
+      <div class="container">
+         <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="{% url "home" %}"><img src="{% static 'images/logo.png' %}"></a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+               aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+               <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse vazir-font" id="navbarSupportedContent">
+               <ul class="navbar-nav ml-auto">
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "home" %}">خانه</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "about" %}">درباره ما</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="coffees.html">محصولات</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "contact" %}">ارتباط با ما</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "register" %}">ثبت نام</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "login" %}">ورود</a>
+                  </li>
+               </ul>
+            </div>
+         </nav>
+      </div>
+   </div>
+   <div style="padding-top:8%;padding-bottom:3%; background-color:#b1b1b1;">
+      <div class="form-container">
+         <form method="POST" class='text-center row justify-content-center nazanin-font'>
+            {% csrf_token %}
+            <label for="id_username" class="custom-fontsize-persian text-primary">:نام کاربری</label>
+            {{ form.username }}
+            <label for="id_password" class="custom-fontsize-persian text-primary">:رمز عبور</label>
+            {{form.password}}
+            <button class='btn btn-primary w-100' type="submit">Login</button>
+         </form>
+         <div style="text-align:center; padding-top:10%;">
+            <a class='py-3 text-info custom-fontsize-persian nazanin-font' href="{% url 'register' %}">حساب کاربری ندارید؟ بسازید</a>
+         </div>
+      </div>
+   </div>
+   {% endblock content %}
+</body>

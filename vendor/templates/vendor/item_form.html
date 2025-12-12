@@ -1,0 +1,227 @@
+{% extends "vendor/base_vendor.html" %}
+{% load static %}
+
+{% block vendor_content %}
+<style>
+/* استایل‌های کمکی مختصر */
+.vendor-form-wrapper { direction: rtl; }
+.form-section { margin-bottom: 1.5rem; }
+
+/* Image preview styles */
+.current-image img, .preview-image img {
+  max-height: 150px;
+  border-radius: 6px;
+  border: 1px solid #e6e6e6;
+  object-fit: contain; /* Ensures the image fits without cropping */
+}
+
+/* فاصله‌دهی و چینش برای کنترل فرم */
+.form-container-centered {
+    max-width: 600px; /* Constrain the form width */
+    margin: 0 auto; /* Center the form container */
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #f8f9fa; /* Light background for visibility */
+}
+
+/* فاصله بین checkbox و label در RTL */
+/* استفاده از کلاس سفارشی برای کنترل دقیق Flexbox */
+.form-check-custom {
+  display: flex; 
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: .5rem;
+  padding-right: 0;
+  justify-content: flex-end; /* عناصر را به سمت راست (پایان) باکس می‌راند */
+}
+
+/* Ensure form controls take full width of the centered container */
+.form-group .form-control, .form-group select, .form-group textarea, .form-group input[type="number"] {
+    width: 100%;
+}
+
+/* Styling for the custom image upload button area */
+.custom-file-upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Hide the default file input text field/label for file name */
+.custom-file-input {
+    opacity: 0; /* Make the input invisible */
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+/* Style the button that will act as the upload area */
+.file-upload-button {
+    display: inline-block;
+    padding: 8px 12px;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+}
+</style>
+
+<div class="vendor-form-wrapper mt-4" dir="rtl">
+    <div class="form-container-centered">
+        <h3 class="text-center mb-4">افزودن / ویرایش محصول</h3>
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+
+            <div class="form-group form-section">
+                <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                  <div class="text-danger small">{{ form.name.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group form-section">
+                <label for="{{ form.drink_type.id_for_label }}">{{ form.drink_type.label }}</label>
+                {{ form.drink_type }}
+                {% if form.drink_type.errors %}
+                  <div class="text-danger small">{{ form.drink_type.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group form-section">
+                <label for="{{ form.price_cents.id_for_label }}">{{ form.price_cents.label }}</label>
+                {{ form.price_cents }}
+                <small class="form-text text-muted text-right">قیمت به تومان</small>
+                {% if form.price_cents.errors %}
+                  <div class="text-danger small">{{ form.price_cents.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group form-section">
+                <label for="{{ form.specs.id_for_label }}">{{ form.specs.label }}</label>
+                {{ form.specs }}
+                {% if form.specs.errors %}
+                  <div class="text-danger small">{{ form.specs.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-row form-section">
+                <div class="col-md-6 form-group">
+                    <div class="form-check-custom">
+                        {# Label اول -> سمت راست #}
+                        <label class="form-check-label" for="{{ form.customizable.id_for_label }}">
+                            {{ form.customizable.label }}
+                        </label>
+                        {# Checkbox دوم -> سمت چپ #}
+                        {{ form.customizable }}
+                    </div>
+                    {% if form.customizable.errors %}
+                      <div class="text-danger small">{{ form.customizable.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6 form-group">
+                    <div class="form-check-custom">
+                         {# Label اول -> سمت راست #}
+                        <label class="form-check-label" for="{{ form.is_available.id_for_label }}">
+                            {{ form.is_available.label }}
+                        </label>
+                        {# Checkbox دوم -> سمت چپ #}
+                        {{ form.is_available }}
+                    </div>
+                    {% if form.is_available.errors %}
+                      <div class="text-danger small">{{ form.is_available.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-group form-section">
+                <label for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+
+                <div class="custom-file-upload-area">
+                    {% if object and object.image %}
+                        <div class="mt-2 text-center">
+                            <p>تصویر فعلی:</p>
+                            <img src="{{ object.image.url }}" class="img-thumbnail current-image" alt="Current Image">
+                            
+                            {% if form.image.initial_text %}
+                                <div class="form-check-custom mt-2">
+                                    <label class="form-check-label" for="{{ form.image.clear_checkbox.id_for_label }}">
+                                        حذف تصویر فعلی
+                                    </label>
+                                    {{ form.image.clear_checkbox }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <div id="preview-box" style="display:none;" class="mt-3 text-center">
+                        <p>پیش‌نمایش تصویر جدید:</p>
+                        <img id="preview-img" class="img-thumbnail preview-image" alt="Image Preview">
+                    </div>
+                    
+                    <div class="file-upload-button mt-2">
+                        انتخاب/تغییر تصویر
+                        {{ form.image }}
+                    </div>
+
+                </div>
+
+                {% if form.image.errors %}
+                  <div class="text-danger small">{{ form.image.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-primary">ذخیره</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var fileInput = document.getElementById("{{ form.image.id_for_label }}");
+    var previewBox = document.getElementById("preview-box");
+    var previewImg = document.getElementById("preview-img");
+
+    if (!fileInput) return;
+
+    fileInput.addEventListener('change', function (e) {
+        var file = fileInput.files && fileInput.files[0];
+        
+        if (!file) {
+            previewBox.style.display = 'none';
+            previewImg.src = '';
+            return;
+        }
+
+        // Only show preview for images
+        if (!file.type.startsWith('image/')) {
+            previewBox.style.display = 'none';
+            previewImg.src = '';
+            return;
+        }
+
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            previewImg.src = evt.target.result;
+            previewBox.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+});
+</script>
+{% endblock %}

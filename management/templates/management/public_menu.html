@@ -1,0 +1,412 @@
+{% extends "home/base.html" %}
+{% load static %}
+{% load price_tags %}
+
+{% block content %}
+<style>
+
+/* ===========================
+   PRODUCT CARD STYLES
+=========================== */
+.product-card .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+.product-card .card-img-top {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  background: #f6f6f6;
+}
+
+.product-card .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  direction: rtl;
+  text-align: right;
+}
+
+.qty-controls { display:flex; align-items:center; gap:8px; }
+.qty-controls .btn { width:36px; height:36px; padding:0; border-radius:6px; }
+
+/* ===========================
+   FLOATING FOOTER BAR (Option B)
+=========================== */
+.cart-footer-fixed {
+  position: fixed !important;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+
+  background: #000000 !important; /* CHANGED: Black background */
+  color: #ffffff !important; /* CHANGED: White text for the container */
+
+  border-top: none;
+  padding: 12px 0;
+
+  display: flex;
+  align-items: center;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
+}
+
+.cart-footer-fixed * {
+  color: #ffffff !important; /* CHANGED: Ensures all inner elements are white (for cart summary) */
+}
+
+.cart-footer-fixed .btn {
+  background: #28a745 !important; /* CHANGED: Green button (Bootstrap Success) */
+  border: none !important;
+  color: #ffffff !important;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+.cart-footer-fixed .btn:hover {
+  background: #1e7e34 !important; /* CHANGED: Darker green on hover */
+}
+
+
+.management-menu-wrapper {
+  direction: rtl;
+  text-align: right;
+  font-family: 'Vazir', 'Bnazanin', 'Poppins', sans-serif;
+}
+
+/* Price formatting + badges */
+.price-display { font-weight: bold; }
+
+/* Modal detailed items */
+.cart-item-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.cart-item-actions button { margin-left: 4px; }
+
+/* iOS tap fix */
+.cart-footer-fixed button {
+  pointer-events: auto !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cart-footer-fixed .cart-summary {
+    font-size: 20px; 
+    font-weight: 600; 
+    letter-spacing: 0.5px;
+}
+
+
+/* Extra space at bottom so content not hidden under floating bar */
+body { padding-bottom: 90px; }
+
+/* --- NEW STYLE FOR OUT OF STOCK --- */
+.out-of-stock-card {
+    opacity: 0.6; /* کم‌رنگ کردن کارت */
+}
+/* --- END NEW STYLE --- */
+
+</style>
+
+
+<div class="container mt-3 management-menu-wrapper">
+
+  <h4 class="mb-3">منو - میز {{ table.number }}</h4>
+
+  <div class="my-2 p-0">
+    <ul class="nav nav-pills" id="categoryTabs">
+      <li class="nav-item"><a class="nav-link active" data-type="all" href="#">همه</a></li>
+      {% for t in types %}
+      <li class="nav-item">
+        <a class="nav-link" data-type="{{ t.code }}" href="#">{{ t.label }} ({{ t.count }})</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+
+  <div id="products" class="row">
+    {% for p in products %}
+    <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 product-card" data-type="{{ p.drink_type }}">
+      <div class="card {% if not p.is_available %}out-of-stock-card{% endif %}">
+        
+        {% if p.image %}
+          <img src="{{ p.image.url }}" class="card-img-top" alt="{{ p.name }}">
+        {% else %}
+          <div class="card-img-top"></div>
+        {% endif %}
+        
+        <div class="card-body">
+          <div>
+            <h5>{{ p.name }}</h5>
+            <p class="small text-muted">{{ p.specs }}</p>
+            <p>
+              {% if p.is_available %}
+                <strong class="price-display" data-price-cents="{{ p.price_cents }}"></strong>
+                <span class="small">تومان</span>
+              {% else %}
+                <span class="badge badge-danger p-2 vazir-font">ناموجود</span>
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="qty-controls">
+              <button class="btn btn-outline-secondary" onclick="decreaseQty({{ p.id }})">−</button>
+              <span id="qty-{{ p.id }}">0</span>
+              <button class="btn btn-outline-primary"
+                      {% if not p.is_available %}disabled{% endif %} 
+                      onclick="addToCart({{ p.id }}, '{{ p.name|escapejs }}', {{ p.price_cents }}, {{ p.customizable|yesno:'true,false' }})">+</button>
+            </div>
+
+            {% if p.customizable %}
+            <span class="badge badge-info">قابل سفارشی‌سازی</span>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+
+  {# REMOVED bg-light CLASS #}
+  <div class="cart-footer-fixed"> 
+    <div class="container d-flex justify-content-between align-items-center">
+      <div class="cart-summary">
+        <span id="cart-count">0 مورد</span> • 
+        <span id="cart-total">0</span> تومان
+      </div>
+
+      <button id="order-btn" class="btn btn-primary" type="button"
+              data-toggle="modal" data-target="#checkoutModal">
+        ثبت سفارش
+      </button>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="checkoutModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" dir="rtl">
+          
+          <div class="modal-header">
+            <h5>تکمیل سفارش</h5>
+            <button class="close" data-dismiss="modal">&times;</button>
+          </div>
+
+          <div class="modal-body">
+            <form id="checkoutForm">
+              {% csrf_token %}
+              
+              <div class="form-group mb-3">
+                <label>نام(اجباری):</label>
+                <input name="customer_name" class="form-control" required> </div>
+
+              <div class="form-group mb-3">
+                <label>شماره تماس(اجباری):</label>
+                <input name="customer_phone" class="form-control" required> </div>
+
+              <div class="form-group mb-3">
+                <label>یادداشت(اختیاری):</label>
+                <textarea name="notes" class="form-control"></textarea>
+              </div>
+              
+              <div id="checkout-summary" class="small text-muted mb-2"></div>
+              <div id="checkout-detailed"></div>
+
+              <button type="button" class="btn btn-success btn-block mt-3" onclick="placeOrder()">
+                ثبت سفارش نهایی
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+</div>
+
+
+<script>
+let cart = {};
+
+function formatPrice(cents) {
+  const r = cents;
+  if (Number.isInteger(r)) return r.toLocaleString();
+  let s = r.toFixed(2).replace(/\.?0+$/, "");
+  const parts = s.split(".");
+  parts[0] = Number(parts[0]).toLocaleString();
+  return parts.join(".");
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  // فیلتر کردن و به‌روزرسانی قیمت‌ها (به جز محصولاتی که ناموجودند)
+  document.querySelectorAll(".price-display").forEach(el => {
+      // مطمئن می‌شویم که این عنصر درون یک تگ 'ناموجود' نباشد (در این مورد چک کردن priceCents کافی است)
+      if (el.dataset.priceCents) {
+          el.textContent = formatPrice(parseInt(el.dataset.priceCents));
+      }
+  });
+
+  document.querySelectorAll("#categoryTabs .nav-link").forEach(a => {
+    a.addEventListener("click", function(e){
+      e.preventDefault();
+      document.querySelectorAll("#categoryTabs .nav-link").forEach(n => n.classList.remove("active"));
+      this.classList.add("active");
+      const type = this.dataset.type;
+      document.querySelectorAll(".product-card").forEach(c => {
+        c.style.display = (type === "all" || c.dataset.type === type) ? "" : "none";
+      });
+    });
+  });
+});
+
+
+function addToCart(id, name, price, customizable=false) {
+  let custom = "";
+  if (customizable) {
+    // متن Prompt برای راهنمایی کاربر به‌روزرسانی شد.
+    let userInput = prompt("توضیحات (مثلاً ۷۰/۳۰). برای سرو نرمال، کادر را خالی بگذارید و تایید کنید:", "");
+    
+    // اگر کاربر دکمه "لغو" (Cancel) را بزند، userInput برابر null خواهد بود و custom همان "" می‌ماند.
+    if (userInput !== null) {
+      // اگر کاربر OK را بزند، مقدار وارد شده را تمیز (Trim) می‌کنیم. اگر خالی باشد، "" می‌شود.
+      custom = userInput.trim();
+    }
+  }
+  
+  // با این کار، اگر custom خالی باشد، محصول به عنوان یک آیتم نرمال (بدون سفارشی‌سازی) در سبد اضافه می‌شود.
+  const key = id + "::" + custom; 
+
+  if (!cart[key]) cart[key] = { id, name, qty: 0, price_cents: price, custom };
+  cart[key].qty++;
+
+  updateQtyBadges(id);
+  updateCartUI();
+}
+
+function decreaseQty(id) {
+  for (let k in cart) {
+    if (cart[k].id == id) {
+      cart[k].qty--;
+      if (cart[k].qty <= 0) delete cart[k];
+      break;
+    }
+  }
+  updateQtyBadges(id);
+  updateCartUI();
+}
+
+function updateQtyBadges(id) {
+  let total = 0;
+  for (let k in cart) if (cart[k].id == id) total += cart[k].qty;
+  document.getElementById("qty-" + id).textContent = total;
+}
+
+function updateCartUI() {
+  let count = 0, total = 0;
+
+  for (let k in cart) {
+    count += cart[k].qty;
+    total += cart[k].qty * cart[k].price_cents;
+  }
+
+  document.getElementById("cart-count").textContent = count + " مورد";
+  document.getElementById("cart-total").textContent = formatPrice(total);
+
+  let summary = "";
+  let detailed = "";
+
+  for (let k in cart) {
+    const it = cart[k];
+    summary += `${it.qty} × ${it.name}${it.custom ? " ("+it.custom+")" : ""} — ${formatPrice(it.qty*it.price_cents)} تومان<br>`;
+
+    detailed += `
+      <div class="cart-item-row">
+        <div>
+          <strong>${it.name}</strong><br>
+          ${it.custom ? `<small>${it.custom}</small><br>` : ""}
+          <small>${it.qty} × ${formatPrice(it.price_cents)} تومان</small>
+        </div>
+        <div class="cart-item-actions">
+          <button class="btn btn-outline-secondary" onclick="decreaseQty(${it.id})">−</button>
+          <button class="btn btn-outline-primary" onclick="addToCart(${it.id}, '${it.name.replace("'", "\\'")}', ${it.price_cents}, ${it.custom ? 'true' : 'false'})">+</button>
+        </div>
+      </div>
+    `;
+  }
+
+  document.getElementById("checkout-summary").innerHTML = summary || "سبد خرید خالی است";
+  document.getElementById("checkout-detailed").innerHTML = detailed;
+}
+
+
+function getCookie(name) {
+  let v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return v ? v.pop() : "";
+}
+
+function placeOrder() {
+  const items = [];
+  for (let k in cart) {
+    items.push({
+      product_id: cart[k].id,
+      quantity: cart[k].qty,
+      custom: cart[k].custom
+    });
+  }
+  if (!items.length) return alert("سبد خرید خالی است");
+
+  // --- اعتبارسنجی اجباری بودن نام و تلفن ---
+  const customerName = document.querySelector("[name=customer_name]").value.trim();
+  const customerPhone = document.querySelector("[name=customer_phone]").value.trim();
+  
+  if (!customerName) {
+    alert("لطفاً نام خود را وارد کنید.");
+    return;
+  }
+  
+  if (!customerPhone) {
+    alert("لطفاً شماره تماس خود را وارد کنید.");
+    return;
+  }
+  // ----------------------------------------
+
+  const payload = {
+    table_qr: "{{ table.qr_slug }}",
+    customer_name: customerName, 
+    customer_phone: customerPhone, 
+    notes: document.querySelector("[name=notes]").value,
+    items
+  };
+  fetch("{% url 'create_order' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    $('#checkoutModal').modal('hide');
+    alert("سفارش ثبت شد. شماره: " + data.order_id);
+    // پس از ثبت موفق، سبد خرید را خالی کنید و UI را به‌روز کنید
+    cart = {};
+    updateCartUI();
+    document.querySelectorAll("[id^='qty-']").forEach(el => el.textContent = "0");
+  })
+  .catch(err => {
+      console.error("Error:", err);
+      alert("خطا در ثبت سفارش. لطفاً دوباره امتحان کنید.");
+  });
+}
+
+</script>
+
+{% endblock %}

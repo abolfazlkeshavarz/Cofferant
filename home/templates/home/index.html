@@ -1,0 +1,402 @@
+{% extends "home/base.html" %}
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<body>
+   {% block content %}
+   <div class="header_section main-header">
+      <div class="container">
+         <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="{% url "home" %}"><img src="{% static 'images/logo.png' %}"></a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+               aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+               <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse vazir-font" id="navbarSupportedContent">
+               <ul class="navbar-nav ml-auto">
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "home" %}">خانه</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "about" %}">درباره ما</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="coffees.html">محصولات</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "contact" %}">ارتباط با ما</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "register" %}">ثبت نام</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "login" %}">ورود</a>
+                  </li>
+               </ul>
+            </div>
+         </nav>
+      </div>
+      <!-- banner section start -->
+      <div class="banner_section layout_padding">
+         <div class="container">
+            <div id="banner_slider" class="carousel slide" data-ride="carousel">
+               <div class="carousel-inner">
+                  <div class="carousel-item active">
+                     <div class="row">
+                        <div class="col-md-12">
+                           <div class="banner_taital_main text-background">
+                              <h1 class="banner_taital vazir-font" style="text-align:right;">کافی <br>شاپ</h1>
+                              <p class="banner_text vazir-font"
+                                 style="margin-right:auto; font-size:26px; text-align:right; direction:rtl;">کافیرانت
+                                 <br>پلتفرم آنلاین مدیریت کافه و رستوران</p>
+                              <div class="btn_main">
+                                 <div class="about_bt"><a style="font-size:26px" href="{% url "about" %}"
+                                       class="btn btn-info btn-lg active vazir-font">درباره ما</a></div>
+                                 <div class="callnow_bt"><a class="btn btn-danger btn-lg active vazir-font" style="font-size:26px"
+                                       href="#">منو</a></div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="carousel-item">
+                     <div class="row">
+                        <div class="col-md-12">
+                           <div class="banner_taital_main text-background">
+                              <h1 class="banner_taital" style="color:black;">Coffee<br>Shop</h1>
+                              <p class="banner_text" style="color:black;">Cofferant<br>Online Coffeshop and Restaurant
+                                 Management Platform</p>
+                              <div class="btn_main">
+                                 <div class="about_bt active"><a class="btn btn-info btn-lg active"
+                                       href="{% url "about" %}">About Us</a></div>
+                                 <div class="callnow_bt"><a class="btn btn-danger btn-lg active" href="#">Menu</a></div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <a class="carousel-control-prev" href="#banner_slider" role="button" data-slide="prev">
+                  <i class="fa fa-arrow-left"></i>
+               </a>
+               <a class="carousel-control-next" href="#banner_slider" role="button" data-slide="next">
+                  <i class="fa fa-arrow-right"></i>
+               </a>
+            </div>
+         </div>
+      </div>
+      <!-- banner section end -->
+   </div>
+   <!-- header section end -->
+   <!-- about section start -->
+   <div class="about_section layout_padding">
+      <div class="container">
+         <div class="about_section_2">
+            <div class="row">
+               <div class="col-md-6">
+                  <div class="about_taital_box">
+                     <h1 class="about_taital vazir-font">درباره ی کافیرانت</h1>
+                     <p class=" about_text vazir-font">کافیرانت فعالیت خود را از سال 1403 در زمینه فروش دانه های قهوه
+                        آغاز کرد و در عرض چند ماه مفتخر این است که فرآورده هایی که از قهوه به دست میایند را به دست مشتری
+                        برساند</p>
+                     <div class="readmore_btn"><a class="btn btn-outline-primary vazir-font" href="{% url "about" %}">بیشتر</a>
+                     </div>
+                  </div>
+               </div>
+               <div class="col-md-6">
+                  <div class="image_iman"><img src="{% static "images/about-img.jpeg" %}" class="about_img"></div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+   <!-- about section end -->
+   <!-- coffee section start -->
+   <div class="coffee_section layout_padding">
+      <div class="container">
+         <div class="row">
+            <div class="col-md-12">
+               <h1 class="coffee_taital">OUR Coffee OFFER</h1>
+            </div>
+         </div>
+      </div>
+      <div class="coffee_section_2">
+         <div id="main_slider" class="carousel slide" data-ride="carousel">
+            <div class="carousel-inner">
+               <div class="carousel-item active">
+                  <div class="container-fluid">
+                     <div class="row">
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-1.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">TYPES OF COFFEE</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-2.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">BEAN VARIETIES</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-3.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">COFFEE & PASTRY</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-4.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">COFFEE TO GO</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="carousel-item">
+                  <div class="container-fluid">
+                     <div class="row">
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-1.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">TYPES OF COFFEE</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-2.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">BEAN VARIETIES</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-3.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">COFFEE & PASTRY</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-4.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">COFFEE TO GO</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="carousel-item">
+                  <div class="container-fluid">
+                     <div class="row">
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-1.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">TYPES OF COFFEE</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-2.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">BEAN VARIETIES</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-3.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">COFFEE & PASTRY</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                           <div class="coffee_img"><img src="{% static "images/img-4.png" %}"></div>
+                           <div class="coffee_box">
+                              <h3 class="types_text">COFFEE TO GO</h3>
+                              <p class="looking_text">looking at its layout. The point of</p>
+                              <div class="read_bt"><a href="#">Read More</a></div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <a class="carousel-control-prev" href="#main_slider" role="button" data-slide="prev">
+               <i class="fa fa-arrow-left"></i>
+            </a>
+            <a class="carousel-control-next" href="#main_slider" role="button" data-slide="next">
+               <i class="fa fa-arrow-right"></i>
+            </a>
+         </div>
+      </div>
+   </div>
+   <!-- coffee section end -->
+   <!-- client section start -->
+   <div class="client_section layout_padding">
+      <div class="container">
+         <div id="custom_slider" class="carousel slide" data-ride="carousel">
+            <div class="carousel-inner">
+               <div class="carousel-item active">
+                  <div class="row">
+                     <div class="col-md-12">
+                        <h1 class="about_taital">What syas customers</h1>
+                     </div>
+                  </div>
+                  <div class="client_section_2">
+                     <div class="client_taital_main">
+                        <div class="client_left">
+                           <div class="client_img"><img src="{% static "images/client-img1.png" %}"></div>
+                        </div>
+                        <div class="client_right">
+                           <h3 class="moark_text">Joy Moark</h3>
+                           <p class="client_text">now use Lorem Ipsum as their default model text, and a search for
+                              'lorem ipsum' will uncover many web sites still in their infancynow use Lorem Ipsum as
+                              their default model text, </p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="carousel-item">
+                  <div class="row">
+                     <div class="col-md-12">
+                        <h1 class="about_taital">What syas customers</h1>
+                     </div>
+                  </div>
+                  <div class="client_section_2">
+                     <div class="client_taital_main">
+                        <div class="client_left">
+                           <div class="client_img"><img src="{% static "images/client-img1.png" %}"></div>
+                        </div>
+                        <div class="client_right">
+                           <h3 class="moark_text">Joy Moark</h3>
+                           <p class="client_text">now use Lorem Ipsum as their default model text, and a search for
+                              'lorem ipsum' will uncover many web sites still in their infancynow use Lorem Ipsum as
+                              their default model text, </p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div class="carousel-item">
+                  <div class="row">
+                     <div class="col-md-12">
+                        <h1 class="about_taital">What syas customers</h1>
+                     </div>
+                  </div>
+                  <div class="client_section_2">
+                     <div class="client_taital_main">
+                        <div class="client_left">
+                           <div class="client_img"><img src="{% static "images/client-img1.png" %}"></div>
+                        </div>
+                        <div class="client_right">
+                           <h3 class="moark_text">Joy Moark</h3>
+                           <p class="client_text">now use Lorem Ipsum as their default model text, and a search for
+                              'lorem ipsum' will uncover many web sites still in their infancynow use Lorem Ipsum as
+                              their default model text</p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <a class="carousel-control-prev" href="#custom_slider" role="button" data-slide="prev">
+               <i class="fa fa-arrow-left"></i>
+            </a>
+            <a class="carousel-control-next" href="#custom_slider" role="button" data-slide="next">
+               <i class="fa fa-arrow-right"></i>
+            </a>
+         </div>
+      </div>
+   </div>
+   <!-- client section end -->
+   <!-- blog section start -->
+   <div class="blog_section layout_padding">
+      <div class="container">
+         <div class="row">
+            <div class="col-md-12">
+               <h1 class="about_taital">Our Blog</h1>
+            </div>
+         </div>
+         <div class="blog_section_2">
+            <div class="row">
+               <div class="col-md-6">
+                  <div class="blog_box">
+                     <div class="blog_img"><img src="{% static "images/blog-img1.png" %}"></div>
+                     <h4 class="date_text">05 April</h4>
+                     <h4 class="prep_text">PREP TECHNIQUES Coffee</h4>
+                     <p class="lorem_text">distracted by the readable content of a page when looking at its layout. The
+                        point of using Lorem Ipsum is that it has a moredistracted by the readable content of a page
+                        when looking at its layout. The point of using Lorem Ipsum is that it has a more</p>
+                  </div>
+                  <div class="read_btn"><a href="#">Read More</a></div>
+               </div>
+               <div class="col-md-6">
+                  <div class="blog_box">
+                     <div class="blog_img"><img src="{% static "images/blog-img2.png" %}"></div>
+                     <h4 class="date_text">05 April</h4>
+                     <h4 class="prep_text">Enjoy Best Coffee</h4>
+                     <p class="lorem_text">distracted by the readable content of a page when looking at its layout. The
+                        point of using Lorem Ipsum is that it has a moredistracted by the readable content of a page
+                        when looking at its layout. The point of using Lorem Ipsum is that it has a more</p>
+                  </div>
+                  <div class="read_btn"><a href="#">Read More</a></div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+   <!-- blog section end -->
+   <!-- contact section start -->
+   <div class="contact_section layout_padding">
+      <div class="container">
+         <div class="row">
+            <div class="col-sm-12">
+               <h1 class="contact_taital">Get In Touch</h1>
+            </div>
+         </div>
+      </div>
+      <div class="container-fluid">
+         <div class="contact_section_2">
+            <div class="row">
+               <div class="col-md-12">
+                  <div class="mail_section_1">
+                     <input type="text" class="mail_text" placeholder="Your Name" name="Your Name">
+                     <input type="text" class="mail_text" placeholder="Your Email" name="Your Email">
+                     <input type="text" class="mail_text" placeholder="Your Phone" name="Your Phone">
+                     <textarea class="massage-bt" placeholder="Massage" rows="5" id="comment" name="Massage"></textarea>
+                     <div class="send_bt"><a href="#">Send</a></div>
+                  </div>
+               </div>
+               <div class="map_main">
+                  <div class="map-responsive">
+                     <iframe
+                        src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d198.46904363718164!2d49.588392287508555!3d37.259457460372985!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2s!4v1731571715991!5m2!1sen!2s"
+                        width="250" height="500" frameborder="0" style="border:0; width: 100%;"
+                        allowfullscreen=""></iframe>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+   <!-- contact section end -->
+   {% endblock content %}
+</body>
+
+</html>

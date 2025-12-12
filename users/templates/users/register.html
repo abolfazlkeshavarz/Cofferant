@@ -1,0 +1,72 @@
+{% extends "home/base.html" %}
+{% load static %}
+<!DOCTYPE html>
+
+<html>
+
+<body>
+   {% block content %}
+   <div class="header_section register-header">
+      <div style="background-color:bb3f3f;" class="container">
+         <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="{% url "home" %}"><img src="{% static 'images/logo.png' %}"></a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+               aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+               <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse vazir-font" id="navbarSupportedContent">
+               <ul class="navbar-nav ml-auto">
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "home" %}">خانه</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "about" %}">درباره ما</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="coffees.html">محصولات</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "contact" %}">ارتباط با ما</a>
+                  </li>
+                  <li class="nav-item">
+                     <a class="nav-link" href="{% url "login" %}">ورود</a>
+                  </li>
+               </ul>
+            </div>
+         </nav>
+      </div>
+   </div>
+   <div class="align-right"
+      style="background-color: #848484; color: #e0e0e0; font-family: 'Poppins', sans-serif, 'Bnazanin', 'Vazir'; line-height: 1.80857;padding-top: 100px;">
+      <div class="form-container nazanin-font">
+         <form method="post" class="align-right custom-fontsize-persian">
+            {% csrf_token %}
+
+            <!-- Username -->
+            <label for="id_username">:نام کاربری</label>
+            {{ form.username }}
+
+            <!-- Password -->
+            <label for="id_password1">:رمز عبور</label>
+            {{ form.password1 }}
+
+            <!-- Confirm Password -->
+            <label for="id_password2">:تکرار رمز عبور</label>
+            {{ form.password2 }}
+
+            <!-- Phone Number -->
+            <label for="id_phone_number">:شماره همراه</label>
+            {{ form.phone_number }}
+
+            <!-- Address -->
+            <label for="id_address">:آدرس</label>
+            {{ form.address }}
+
+            <button class="btn btn-primary" style="font-size:25px; " type="submit">ثبت</button>
+         </form>
+      </div>
+   </div>
+   {% endblock content %}
+</body>
+
+</html>

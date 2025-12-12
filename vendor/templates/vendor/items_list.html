@@ -1,0 +1,62 @@
+{% extends "vendor/base_vendor.html" %}
+{% load static %}
+{% load price_tags %}
+
+{% block vendor_content %}
+<div class="container mt-4" dir="rtl">
+  <div class="d-flex justify-content-between align-items-center">
+    <h3>لیست محصولات</h3>
+    <a class="btn btn-success" href="{% url 'vendor:item_add' %}">افزودن محصول</a>
+  </div>
+
+  <div class="table-responsive"> <table class="table table-bordered mt-3">
+      <thead class="thead-light">
+        <tr>
+          {# ترتیب جدید ستون‌ها #}
+          <th>عملیات</th>
+          <th>نام</th>
+          <th>نوع</th>
+          <th>قیمت (تومان)</th>
+          <th>قابل سفارشی</th>
+          <th>موجودی</th>
+          <th>تصویر</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        {# اعمال کلاس table-danger در صورتی که item ناموجود باشد #}
+        <tr class="{% if not item.is_available %}table-danger{% endif %}"> 
+          
+          {# ۱. عملیات (ویرایش) #}
+          <td><a class="btn btn-sm btn-secondary" href="{% url 'vendor:item_edit' item.id %}">ویرایش</a></td>
+          
+          {# ۲. نام محصول (با رنگ و ضخامت متمایز) #}
+          <td><strong class="text-dark">{{ item.name }}</strong></td>
+          
+          {# ۳. نوع محصول #}
+          <td>{{ item.get_drink_type_display }}</td>
+          
+          {# ۴. قیمت #}
+          <td>{{ item.price_cents|money }}</td>
+          
+          {# ۵. قابل سفارشی #}
+          <td>{% if item.customizable %}بله{% else %}خیر{% endif %}</td>
+          
+          {# ۶. موجودی (جدید) #}
+          <td>
+              {% if item.is_available %}
+                  <span class="text-success font-weight-bold">موجود</span>
+              {% else %}
+                  <span class="text-danger font-weight-bold">ناموجود</span>
+              {% endif %}
+          </td>
+          
+          {# ۷. تصویر #}
+          <td>{% if item.image %}<img src="{{ item.image.url }}" style="height:60px">{% endif %}</td>
+          
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div> </div>
+{% endblock %}

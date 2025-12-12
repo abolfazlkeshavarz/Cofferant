@@ -1,0 +1,49 @@
+/* فارسی‌سازی کل پنل vendor */
+.vendor-wrapper {
+    direction: rtl;
+    text-align: right;
+    font-family: 'Vazir', 'Bnazanin', sans-serif;
+}
+
+/* فرم‌ها */
+.vendor-wrapper label {
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.vendor-wrapper input,
+.vendor-wrapper textarea,
+.vendor-wrapper select,
+.vendor-wrapper .form-control {
+    font-family: 'Vazir', 'Bnazanin', sans-serif !important;
+    direction: rtl;
+    text-align: right;
+}
+
+/* جدول‌ها */
+.vendor-wrapper table {
+    font-family: 'Vazir', 'Bnazanin', sans-serif;
+    text-align: right;
+}
+
+/* تیتر صفحات */
+.vendor-wrapper h1,
+.vendor-wrapper h2,
+.vendor-wrapper h3,
+.vendor-wrapper h4 {
+    font-family: 'Vazir', 'Bnazanin', sans-serif;
+    font-weight: bold;
+}
+
+/* فاصله مناسب بین فیلدها */
+.vendor-wrapper .form-group {
+    margin-bottom: 1.2rem;
+}
+
+/* دکمه‌ها */
+.vendor-wrapper .btn {
+    font-family: 'Vazir', sans-serif;
+    padding: 8px 18px;
+    font-size: 15px;
+    border-radius: 6px;
+}

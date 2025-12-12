@@ -1,0 +1,25 @@
+{% extends "vendor/base_vendor.html" %}
+{% block vendor_content %}
+<div class="container mt-4" dir="rtl">
+  <div class="d-flex justify-content-between">
+    <h3>میزها</h3>
+    <a class="btn btn-success" href="{% url 'vendor:table_add' %}">افزودن میز</a>
+  </div>
+
+  <table class="table table-bordered mt-3">
+    <thead><tr><th>شماره</th><th>لینک / QR</th></tr></thead>
+    <tbody>
+      {% for t in tables %}
+      <tr>
+        <td>{{ t.number }}</td>
+        <td>
+          <a href="{% url 'public_menu' t.qr_slug %}" target="_blank">باز کردن منو</a>
+          <!-- small QR image -->
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ request.build_absolute_uri|slice:':-1' }}t/{{ t.qr_slug }}" alt="QR">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
