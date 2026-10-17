@@ -363,3 +363,85 @@ class BrandColourTests(TestCase):
         self.assertEqual(both.status_code, 200)  # must pick percent OR amount
         self.assertEqual(self.client.get(reverse("vendor:coupons")).status_code, 200)
 
+
+
+# ---------------------------------------------------------------------------
+# Vendor-defined categories and the modern palette
+# ---------------------------------------------------------------------------
+from .models import Category, create_default_categories  # noqa: E402
+
+
+class CategoryTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        User = get_user_model()
+        self.client.force_login(User.objects.create_user("boss", password="pw-12345-x", is_staff=True))
+        self.table = Table.objects.create(number="1")
+
+    def test_vendor_creates_own_category_and_product_uses_it(self):
+        r = self.client.post(reverse("vendor:category_add"), {"name": "صبحانه", "emoji": "🥐", "sort_order": 0, "is_active": "on"})
+        self.assertEqual(r.status_code, 302)
+        cat = Category.objects.get(name="صبحانه")
+        r = self.client.post(reverse("vendor:item_add"), {
+            "name": "نیمرو", "category": cat.id, "price_cents": 90000, "prep_minutes": 8, "is_available": "on"})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(Item.objects.get(name="نیمرو").category, cat)
+
+    def test_product_requires_a_category(self):
+        r = self.client.post(reverse("vendor:item_add"), {"name": "x", "price_cents": 1, "prep_minutes": 5, "is_available": "on"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Item.objects.count(), 0)
+
+    def test_duplicate_category_name_rejected(self):
+        Category.objects.create(name="دسر")
+        r = self.client.post(reverse("vendor:category_add"), {"name": "دسر", "sort_order": 1, "is_active": "on"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Category.objects.count(), 1)
+
+    def test_menu_groups_by_vendor_categories_in_order_and_hides_inactive(self):
+        a = Category.objects.create(name="ب", sort_order=2)
+        b = Category.objects.create(name="الف", sort_order=1)
+        hidden = Category.objects.create(name="مخفی", sort_order=0, is_active=False)
+        Item.objects.create(name="i1", category=a, price_cents=1)
+        Item.objects.create(name="i2", category=b, price_cents=1)
+        Item.objects.create(name="i3", category=hidden, price_cents=1)
+        Item.objects.create(name="i4", price_cents=1)  # no category
+        r = self.client.get(reverse("public_menu", args=[self.table.qr_slug]))
+        labels = [t["label"] for t in r.context["types"]]
+        self.assertEqual(labels, ["الف", "ب", "سایر"])  # sorted, hidden one absent, uncategorised last
+        names = [p.name for p in r.context["products"]]
+        self.assertEqual(names, ["i2", "i1", "i4"])
+
+    def test_deleting_category_keeps_products(self):
+        cat = Category.objects.create(name="موقت")
+        item = Item.objects.create(name="کیک", category=cat, price_cents=1)
+        r = self.client.post(reverse("vendor:category_delete", args=[cat.pk]))
+        self.assertEqual(r.status_code, 302)
+        item.refresh_from_db()
+        self.assertIsNone(item.category)
+
+    def test_one_click_default_categories_only_when_empty(self):
+        self.client.post(reverse("vendor:category_defaults"))
+        self.assertEqual(Category.objects.count(), 5)
+        self.client.post(reverse("vendor:category_defaults"))
+        self.assertEqual(Category.objects.count(), 5)
+        self.assertEqual(create_default_categories(), 0)
+
+    def test_category_pages_render_and_filter_products(self):
+        cat = Category.objects.create(name="ویژه")
+        Item.objects.create(name="الف", category=cat, price_cents=1)
+        Item.objects.create(name="ب", price_cents=1)
+        self.assertEqual(self.client.get(reverse("vendor:categories")).status_code, 200)
+        r = self.client.get(reverse("vendor:items"), {"cat": cat.id})
+        self.assertEqual([i.name for i in r.context["items"]], ["الف"])
+        r = self.client.get(reverse("vendor:items"), {"cat": "0"})
+        self.assertEqual([i.name for i in r.context["items"]], ["ب"])
+
+
+class PaletteTests(TestCase):
+    def test_new_default_colours_are_modern_neutral_accent(self):
+        v = Venue.load()
+        self.assertEqual((v.accent_color, v.secondary_color), ("#059669", "#F97316"))
+        css = open("static/app/app.css", encoding="utf-8").read()
+        self.assertNotIn("#b4642b", css.lower())  # old brown is gone
+

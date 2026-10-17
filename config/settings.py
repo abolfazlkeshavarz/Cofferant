@@ -51,7 +51,10 @@ PLATFORM_DOMAIN = os.environ.get("PLATFORM_DOMAIN", "localhost").lower()
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
 TENANT_DB_DIR = DATA_DIR / "tenants"
 if DEPLOYMENT_MODE == "platform":
-    ALLOWED_HOSTS += [PLATFORM_DOMAIN, "." + PLATFORM_DOMAIN]
+    # Customers may bring their own domain, so Django's host list can't be static. The tenant middleware
+    # accepts only the platform domain, its sub-domains and domains registered in the developer panel,
+    # and answers 404 for any other Host.
+    ALLOWED_HOSTS = ["*"]
 
 # Self-hosted customers: their key + the developer's server that vouches for it
 LICENSE_ENFORCE = os.environ.get("LICENSE_ENFORCE", "0") == "1"

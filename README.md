@@ -14,7 +14,8 @@ subscription licenses and can cancel a customer's panel at any moment.
 
 **For the café owner**
 - Live kitchen board with sound alerts and late-order highlighting; dashboard with revenue, top sellers, busiest hours, tips, online share.
-- Menu and table management (QR generation + printable sheets), order history with CSV export, coupons.
+- Menu management with **the vendor's own categories** (name, emoji, order, hide), table management (QR generation + printable sheets), order history with CSV export, coupons.
+- Owners change their own password in Settings.
 - **White-label settings**: name, logo, **primary and alternate colours**, notice banner, tax / service charge, pause ordering.
 - Setup checklist on the dashboard to get a new café live in minutes.
 
@@ -46,6 +47,15 @@ Wildcard TLS needs DNS validation: set `CF_API_TOKEN` (Cloudflare) and run `make
 or `make ssl CHALLENGE=dns` for a manual TXT record. Then sign in at `https://yourdomain.com/users/login/` with the admin
 account from `.env` and open **`/developer/`** → *New customer*. The owner's login is shown once; send it to your customer.
 
+### A+. Customer's own domain, hosted on your server
+A hosted customer can also use a domain they own (e.g. `menu.mycafe.com`) while everything stays on your server and under your license control.
+1. Developer panel → customer → **Custom domain** → save the domain.
+2. The customer adds a DNS **A record** for that domain pointing to your server's IP.
+3. On the server: `make add-domain DOMAIN=menu.mycafe.com` (free Let's Encrypt certificate + nginx entry, renews automatically; add `WWW=1` to also cover `www.`).
+
+Their `slug.yourdomain.com` address keeps working. Cancelling or trashing the customer locks/removes both. The app answers only domains registered in the
+panel; any other `Host` gets a 404. `make remove-domain DOMAIN=…` undoes step 3.
+
 ### B. Install on a customer's own domain
 In the developer panel create a customer with *Mode: install on customer's domain* and copy the shown values. On the customer's server:
 ```bash
@@ -62,6 +72,7 @@ source code, so this is a commercial control, not unbreakable DRM — pair it wi
 |---|---|
 | `make env` / `make up` | create `.env` with generated secrets / build + start |
 | `make ssl` | host nginx + Let's Encrypt |
+| `make add-domain DOMAIN=…` | serve a hosted customer's own domain from your server |
 | `make deploy-check` | pre-flight: secrets, tests, migrations, repo hygiene |
 | `make deploy-health HOST=https://…` | post-deploy smoke checks |
 | `make images-bundle` → `make load-images` | build on your PC, ship to a tiny VPS |

@@ -1,0 +1,22 @@
+{% extends "panel_base.html" %}
+{% block title %}{% if object %}ویرایش دسته{% else %}دسته جدید{% endif %} · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="row">
+    <a class="btn btn-ghost btn-icon" href="{% url 'vendor:categories' %}" aria-label="بازگشت"><svg class="icon" style="transform:scaleX(-1)"><use href="#i-chevron"/></svg></a>
+    <h1>{% if object %}ویرایش دسته{% else %}دسته جدید{% endif %}</h1>
+  </div>
+</div>
+<form method="post" class="card" style="max-width:520px">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="grid" style="grid-template-columns:1fr 110px;gap:12px">
+    <div class="field"><label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>{{ form.name }}{{ form.name.errors }}</div>
+    <div class="field"><label for="{{ form.emoji.id_for_label }}">{{ form.emoji.label }}</label>{{ form.emoji }}{{ form.emoji.errors }}</div>
+  </div>
+  <div class="field"><label for="{{ form.sort_order.id_for_label }}">{{ form.sort_order.label }}</label>{{ form.sort_order }}{{ form.sort_order.errors }}
+    <div class="help">عدد کوچک‌تر بالاتر نمایش داده می‌شود.</div></div>
+  <div class="check mb-2">{{ form.is_active }}<label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label></div>
+  <button class="btn btn-primary btn-block" type="submit">ذخیره</button>
+</form>
+{% endblock %}

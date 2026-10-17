@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from management.models import Item, Order, OrderItem, Table, Venue
+from management.models import Category, Item, Order, OrderItem, Table, Venue, create_default_categories
 
 MENU = [
     ("hot coffee", "اسپرسو", "دو شات قهوه عربیکا با کرمای غلیظ", 85000, True, True),
@@ -27,10 +27,13 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **opts):
         Venue.load()
+        create_default_categories()
+        names = {"hot coffee": "قهوه گرم", "cold coffee": "قهوه سرد", "hot drink": "نوشیدنی گرم",
+                 "cold drink": "نوشیدنی سرد", "cakes": "کیک و دسر"}
         items = []
         for i, (cat, name, specs, price, custom, popular) in enumerate(MENU):
             obj, _ = Item.objects.get_or_create(name=name, defaults=dict(
-                drink_type=cat, specs=specs, price_cents=price, customizable=custom, is_popular=popular, sort_order=i))
+                category=Category.objects.filter(name=names[cat]).first(), specs=specs, price_cents=price, customizable=custom, is_popular=popular, sort_order=i))
             items.append(obj)
         tables = [Table.objects.get_or_create(number=str(n))[0] for n in range(1, 7)]
 

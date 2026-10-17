@@ -80,7 +80,7 @@ def provision_tenant(slug, business_name, owner_username, owner_password, owner_
     migrate_tenant(slug)
     with use_tenant(slug):
         from django.contrib.auth import get_user_model
-        from management.models import Venue
+        from management.models import Venue, create_default_categories
 
         User = get_user_model()
         user, created = User.objects.get_or_create(
@@ -93,6 +93,7 @@ def provision_tenant(slug, business_name, owner_username, owner_password, owner_
         venue = Venue.load()
         venue.name = business_name
         venue.save()
+        create_default_categories()
     return created
 
 

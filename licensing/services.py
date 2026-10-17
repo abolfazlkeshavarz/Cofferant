@@ -49,7 +49,7 @@ def create_customer(form, owner_password=""):
         if lic.mode == License.HOSTED:
             password = owner_password or new_password()
             tenancy.provision_tenant(lic.slug, lic.business_name, lic.owner_username, password, lic.email)
-            creds = {"url": f"https://{lic.hostname}", "username": lic.owner_username, "password": password}
+            creds = {"url": f"https://{lic.subdomain_host}", "username": lic.owner_username, "password": password}
     return lic, creds
 
 
@@ -66,11 +66,29 @@ def set_owner_password(lic, password=None):
         user.set_password(password)
         user.save()
     lic.log("password_set", "رمز مدیر مجموعه تعیین شد")
-    return {"url": f"https://{lic.hostname}", "username": lic.owner_username, "password": password}
+    return {"url": f"https://{lic.subdomain_host}", "username": lic.owner_username, "password": password}
 
 
 def reset_owner_password(lic):
     return set_owner_password(lic)
+
+
+def server_ip():
+    """Best-effort public IP of this server (what the customer's DNS record must point to)."""
+    import socket
+
+    try:
+        return socket.gethostbyname(settings.PLATFORM_DOMAIN)
+    except OSError:
+        return ""
+
+
+def set_domain(lic, domain):
+    old = lic.domain
+    lic.domain = domain
+    lic.save(update_fields=["domain"])
+    checker.invalidate(lic, old)
+    lic.log("domain", domain or "دامنه اختصاصی حذف شد")
 
 
 def apply_and_invalidate(lic, action, *args, **kw):

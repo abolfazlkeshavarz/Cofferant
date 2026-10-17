@@ -8,6 +8,30 @@ from .tenancy import valid_slug
 INPUT = {"class": "input"}
 
 
+HOST_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$")
+
+
+def clean_domain_value(raw, instance=None):
+    """Normalise and validate a customer's own domain (blank is fine)."""
+    from django.conf import settings
+
+    value = (raw or "").strip().lower().rstrip(".")
+    value = re.sub(r"^https?://", "", value).split("/")[0]
+    if not value:
+        return ""
+    if not HOST_RE.match(value):
+        raise forms.ValidationError("آدرس دامنه نامعتبر است (مثل menu.mycafe.com).")
+    root = settings.PLATFORM_DOMAIN
+    if value == root or value.endswith("." + root):
+        raise forms.ValidationError("این دامنه متعلق به خود پلتفرم است؛ دامنه جداگانه مشتری را وارد کنید.")
+    qs = License.objects.filter(domain__iexact=value)
+    if instance is not None and instance.pk:
+        qs = qs.exclude(pk=instance.pk)
+    if qs.exists():
+        raise forms.ValidationError("این دامنه قبلاً برای مشتری دیگری ثبت شده است.")
+    return value
+
+
 class LicenseCreateForm(forms.ModelForm):
     class Meta:
         model = License
@@ -36,6 +60,10 @@ class LicenseCreateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["owner_username"].required = False  # blank = "owner"
+        self.fields["domain"].required = False
+
+    def clean_domain(self):
+        return clean_domain_value(self.cleaned_data.get("domain"), self.instance)
 
     def clean_owner_username(self):
         name = (self.cleaned_data.get("owner_username") or "owner").strip()
@@ -87,3 +115,17 @@ class PricesForm(forms.Form):
                 label=label, min_value=0, max_value=10**10, initial=initial.get(code, 0),
                 widget=forms.NumberInput(attrs={**INPUT, "inputmode": "numeric"}),
             )
+
+
+class DomainForm(forms.Form):
+    domain = forms.CharField(
+        label="دامنه اختصاصی مشتری", required=False, max_length=253,
+        widget=forms.TextInput(attrs={**INPUT, "dir": "ltr", "placeholder": "menu.mycafe.com"}),
+    )
+
+    def __init__(self, *args, instance=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.instance = instance
+
+    def clean_domain(self):
+        return clean_domain_value(self.cleaned_data.get("domain"), self.instance)

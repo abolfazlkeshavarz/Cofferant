@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from management.models import Item
+from management.models import Category, Item
 
 from .forms import CustomUserCreationForm, LoginForm
 from .models import CustomUser
@@ -80,11 +80,14 @@ def sign_out(request):
 
 
 def products_list(request):
-    """Public read-only menu (no ordering) grouped by category."""
-    products = Item.objects.filter(is_available=True)
+    """Public read-only menu (no ordering) grouped by the vendor's categories."""
+    products = list(Item.objects.filter(is_available=True))
     types = []
-    for code, label in Item.CHOICES:
-        group = [p for p in products if p.drink_type == code]
+    for cat in Category.objects.filter(is_active=True):
+        group = [p for p in products if p.category_id == cat.id]
         if group:
-            types.append({"code": code, "label": label, "products": group, "count": len(group)})
+            types.append({"code": str(cat.id), "label": cat.label, "products": group, "count": len(group)})
+    rest = [p for p in products if p.category_id is None]
+    if rest:
+        types.append({"code": "0", "label": "سایر", "products": rest, "count": len(rest)})
     return render(request, "users/products_list.html", {"types": types})

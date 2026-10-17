@@ -1,6 +1,7 @@
 from django import forms
+from django.contrib.auth.forms import PasswordChangeForm
 
-from management.models import Coupon, Item, Table, Venue
+from management.models import Category, Coupon, Item, Table, Venue
 
 INPUT = {"class": "input"}
 
@@ -8,11 +9,11 @@ INPUT = {"class": "input"}
 class VendorItemForm(forms.ModelForm):
     class Meta:
         model = Item
-        fields = ["name", "drink_type", "specs", "price_cents", "prep_minutes", "customizable",
+        fields = ["name", "category", "specs", "price_cents", "prep_minutes", "customizable",
                   "is_popular", "image", "is_available"]
         labels = {
             "name": "نام محصول",
-            "drink_type": "دسته‌بندی",
+            "category": "دسته‌بندی",
             "specs": "توضیحات",
             "price_cents": "قیمت (تومان)",
             "prep_minutes": "زمان آماده‌سازی (دقیقه)",
@@ -23,12 +24,18 @@ class VendorItemForm(forms.ModelForm):
         }
         widgets = {
             "name": forms.TextInput(attrs={**INPUT, "placeholder": "مثال: اسپرسو"}),
-            "drink_type": forms.Select(attrs=INPUT),
+            "category": forms.Select(attrs=INPUT),
             "specs": forms.Textarea(attrs={**INPUT, "rows": 3, "maxlength": 150}),
             "price_cents": forms.NumberInput(attrs={**INPUT, "min": 0, "inputmode": "numeric"}),
             "prep_minutes": forms.NumberInput(attrs={**INPUT, "min": 1, "max": 120}),
             "image": forms.FileInput(attrs={"accept": "image/*"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["category"].queryset = Category.objects.all()
+        self.fields["category"].empty_label = "— انتخاب دسته‌بندی —"
+        self.fields["category"].required = True
 
     def clean_image(self):
         img = self.cleaned_data.get("image")
@@ -108,3 +115,38 @@ class CouponForm(forms.ModelForm):
         if bool(pct) == bool(amt):
             raise forms.ValidationError("فقط یکی از «درصد تخفیف» یا «مبلغ ثابت» را پر کنید.")
         return data
+
+
+class CategoryForm(forms.ModelForm):
+    class Meta:
+        model = Category
+        fields = ["name", "emoji", "sort_order", "is_active"]
+        widgets = {
+            "name": forms.TextInput(attrs={**INPUT, "placeholder": "مثال: صبحانه"}),
+            "emoji": forms.TextInput(attrs={**INPUT, "placeholder": "🥐", "maxlength": 8}),
+            "sort_order": forms.NumberInput(attrs={**INPUT, "min": 0}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        qs = Category.objects.filter(name__iexact=name)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise forms.ValidationError("دسته‌ای با این نام از قبل وجود دارد.")
+        return name
+
+
+class VendorPasswordForm(PasswordChangeForm):
+    """Lets the signed-in owner change their own password (current password required)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {"old_password": "رمز فعلی", "new_password1": "رمز جدید", "new_password2": "تکرار رمز جدید"}
+        for name, field in self.fields.items():
+            field.label = labels[name]
+            field.help_text = ""
+            field.widget.attrs.update({"class": "input", "dir": "ltr"})
+        self.fields["old_password"].widget.attrs["autocomplete"] = "current-password"
+        self.fields["new_password1"].widget.attrs["autocomplete"] = "new-password"
+        self.fields["new_password2"].widget.attrs["autocomplete"] = "new-password"

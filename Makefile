@@ -75,7 +75,7 @@ export DOCKER
 ADMIN = PROD="$(PROD)" bash scripts/admin.sh
 
 .PHONY: help env up up-prebuilt down restart logs ps clean update \
-        images images-bundle load-images bootstrap ssl \
+        images images-bundle load-images bootstrap ssl add-domain remove-domain \
         install migrate run demo test check \
         backup backups-list restore restore-latest shell \
         admin-user admin-password migrate-tenants \
@@ -152,6 +152,14 @@ bootstrap: ## One-shot setup on a fresh Ubuntu/Debian VPS. MODE= DOMAIN= LETSENC
 
 ssl: ## Configure host nginx + Let's Encrypt (platform: CHALLENGE=cloudflare|dns for the wildcard certificate)
 	@bash scripts/deploy-host-nginx.sh
+
+add-domain: ## Serve a hosted customer's OWN domain from this server (certificate + nginx). DOMAIN=menu.mycafe.com [WWW=1]
+	@test -n "$(DOMAIN)" || { echo "DOMAIN is required: make add-domain DOMAIN=menu.mycafe.com"; exit 1; }
+	@bash scripts/add-domain.sh "$(DOMAIN)" $(if $(WWW),--www)
+
+remove-domain: ## Stop serving a customer's own domain from this server. DOMAIN=menu.mycafe.com
+	@test -n "$(DOMAIN)" || { echo "DOMAIN is required: make remove-domain DOMAIN=menu.mycafe.com"; exit 1; }
+	@bash scripts/remove-domain.sh "$(DOMAIN)"
 
 # ------------------------------------------------------------- development
 install: ## Create .venv and install the requirements

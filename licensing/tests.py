@@ -445,3 +445,77 @@ class PlatformTenancyTests(unittest.TestCase):
         html = self.client.get(reverse("vendor:dashboard"), HTTP_HOST="example.test").content.decode()
         self.assertIn(reverse("developer:dashboard"), html)
 
+
+    # ------------------------------------------------------------------ customer's own domain
+    def attach_domain(self, lic, domain):
+        r = self.client.post(reverse("developer:set_domain", args=[lic.pk]), {"domain": domain}, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 302)
+        lic.refresh_from_db()
+        cache.clear()
+
+    def test_customer_site_answers_on_their_own_domain_and_on_the_subdomain(self):
+        lic, creds = self.create("alpha", "کافه آلفا")
+        self.attach_domain(lic, "menu.alpha-cafe.ir")
+        self.assertEqual(lic.domain, "menu.alpha-cafe.ir")
+        own = Client().get("/", HTTP_HOST="menu.alpha-cafe.ir")
+        self.assertEqual(own.status_code, 200)
+        self.assertEqual(own.context["venue"].name, "کافه آلفا")  # their data, not the platform's
+        self.assertEqual(Client().get("/", HTTP_HOST=self.host("alpha")).status_code, 200)
+        # sign in and use the panel through the custom domain
+        c = Client()
+        r = c.post(reverse("login"), {"username": "owner", "password": creds["password"]}, HTTP_HOST="menu.alpha-cafe.ir")
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(c.get(reverse("vendor:dashboard"), HTTP_HOST="menu.alpha-cafe.ir").status_code, 200)
+
+    def test_domain_is_case_insensitive_and_accepts_pasted_urls(self):
+        lic, _ = self.create("alpha", "کافه آلفا")
+        self.attach_domain(lic, "HTTPS://Menu.Alpha-Cafe.IR/some/path")
+        self.assertEqual(lic.domain, "menu.alpha-cafe.ir")
+        self.assertEqual(Client().get("/", HTTP_HOST="MENU.alpha-cafe.ir").status_code, 200)
+
+    def test_unregistered_hosts_are_refused(self):
+        self.assertEqual(Client().get("/", HTTP_HOST="random-site.com").status_code, 404)
+        self.assertEqual(Client().get("/developer/", HTTP_HOST="random-site.com").status_code, 404)
+        self.assertEqual(Client().get("/healthz", HTTP_HOST="127.0.0.1").status_code, 200)  # health checks still work
+
+    def test_cancelling_locks_the_custom_domain_too_and_removing_it_stops_routing(self):
+        lic, creds = self.create("alpha", "کافه آلفا")
+        self.attach_domain(lic, "menu.alpha-cafe.ir")
+        c = Client()
+        c.post(reverse("login"), {"username": "owner", "password": creds["password"]}, HTTP_HOST="menu.alpha-cafe.ir")
+        self.client.post(reverse("developer:cancel", args=[lic.pk]), {"reason": "t"}, HTTP_HOST="example.test")
+        self.assertEqual(c.get(reverse("vendor:dashboard"), HTTP_HOST="menu.alpha-cafe.ir").status_code, 402)
+        self.client.post(reverse("developer:reactivate", args=[lic.pk]), HTTP_HOST="example.test")
+        self.attach_domain(lic, "")
+        self.assertEqual(Client().get("/", HTTP_HOST="menu.alpha-cafe.ir").status_code, 404)
+        self.assertEqual(Client().get("/", HTTP_HOST=self.host("alpha")).status_code, 200)
+
+    def test_trashed_customers_domain_stops_working(self):
+        lic, _ = self.create("alpha", "کافه آلفا")
+        self.attach_domain(lic, "menu.alpha-cafe.ir")
+        self.client.post(reverse("developer:trash", args=[lic.pk]), HTTP_HOST="example.test")
+        cache.clear()
+        self.assertEqual(Client().get("/", HTTP_HOST="menu.alpha-cafe.ir").status_code, 404)
+
+    def test_invalid_duplicate_and_platform_domains_are_rejected(self):
+        a, _ = self.create("alpha", "کافه آلفا")
+        b, _ = self.create("beta", "کافه بتا")
+        self.attach_domain(a, "menu.alpha-cafe.ir")
+        for bad in ("not a domain", "nodots", "x.example.test", "example.test", "-bad-.com", "menu.alpha-cafe.ir"):
+            self.client.post(reverse("developer:set_domain", args=[b.pk]), {"domain": bad}, HTTP_HOST="example.test")
+            b.refresh_from_db()
+            self.assertEqual(b.domain, "", bad)
+
+    def test_creating_a_customer_with_a_custom_domain_and_detail_instructions(self):
+        self.client.force_login(self.dev)
+        r = self.client.post(reverse("developer:create"), {
+            "business_name": "کافه دامنه‌دار", "mode": "hosted", "slug": "alpha", "domain": "Menu.Dar.ir",
+            "plan": "1m", "price_paid": 0}, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 302)
+        lic = License.objects.get(slug="alpha")
+        self.assertEqual(lic.domain, "menu.dar.ir")
+        # credentials shown to the developer use the sub-domain, which has a certificate from day one
+        self.assertEqual(self.client.session["flash_creds"]["url"], "https://alpha.example.test")
+        page = self.client.get(reverse("developer:detail", args=[lic.pk]), HTTP_HOST="example.test").content.decode()
+        self.assertIn("make add-domain DOMAIN=menu.dar.ir", page)
+

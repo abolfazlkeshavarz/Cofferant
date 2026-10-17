@@ -4,6 +4,7 @@ import io
 import qrcode
 import qrcode.image.svg
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
@@ -15,10 +16,11 @@ from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from management import services
-from management.models import Coupon, Item, Order, ServiceRequest, Table, Venue
+from management.models import Category, Coupon, Item, Order, ServiceRequest, Table, Venue, create_default_categories
 from users.decorators import staff_required
 
-from .forms import CouponForm, VenueForm, VendorItemForm, VendorTableForm
+from .forms import (CategoryForm, CouponForm, VenueForm, VendorItemForm, VendorPasswordForm,
+                    VendorTableForm)
 
 
 class StaffRequiredMixin(UserPassesTestMixin):
@@ -202,13 +204,15 @@ class ItemListView(StaffRequiredMixin, ListView):
         cat = self.request.GET.get("cat", "")
         if q:
             qs = qs.filter(Q(name__icontains=q) | Q(specs__icontains=q))
-        if cat in dict(Item.CHOICES):
-            qs = qs.filter(drink_type=cat)
-        return qs
+        if cat == "0":
+            qs = qs.filter(category__isnull=True)
+        elif cat.isdigit():
+            qs = qs.filter(category_id=int(cat))
+        return qs.select_related("category")
 
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
-        ctx.update(categories=Item.CHOICES, cat=self.request.GET.get("cat", ""), q=self.request.GET.get("q", ""))
+        ctx.update(categories=Category.objects.all(), cat=self.request.GET.get("cat", ""), q=self.request.GET.get("q", ""))
         return ctx
 
 
@@ -313,7 +317,21 @@ def venue_settings(request):
         form.save()
         messages.success(request, "تنظیمات ذخیره شد.")
         return redirect("vendor:settings")
-    return render(request, "vendor/settings.html", {"form": form})
+    return render(request, "vendor/settings.html", {"form": form, "password_form": VendorPasswordForm(request.user)})
+
+
+@staff_required
+@require_POST
+def change_password(request):
+    pform = VendorPasswordForm(request.user, request.POST)
+    if pform.is_valid():
+        user = pform.save()
+        update_session_auth_hash(request, user)  # keep this device signed in
+        messages.success(request, "رمز عبور شما تغییر کرد.")
+        return redirect("vendor:settings")
+    return render(request, "vendor/settings.html", {
+        "form": VenueForm(instance=Venue.load()), "password_form": pform, "password_open": True,
+    })
 
 
 # ----------------------------------------------------------------
@@ -347,3 +365,60 @@ class CouponDeleteView(StaffRequiredMixin, DeleteView):
     model = Coupon
     template_name = "vendor/confirm_delete.html"
     success_url = reverse_lazy("vendor:coupons")
+
+
+# ----------------------------------------------------------------
+# Categories (defined by the vendor)
+# ----------------------------------------------------------------
+class CategoryListView(StaffRequiredMixin, ListView):
+    model = Category
+    template_name = "vendor/categories_list.html"
+    context_object_name = "categories"
+
+    def get_queryset(self):
+        return Category.objects.annotate(item_count=Count("items"))
+
+
+class CategoryCreateView(StaffRequiredMixin, CreateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = "vendor/category_form.html"
+    success_url = reverse_lazy("vendor:categories")
+
+    def get_initial(self):
+        last = Category.objects.order_by("-sort_order").first()
+        return {"sort_order": (last.sort_order + 1) if last else 0, "is_active": True}
+
+    def form_valid(self, form):
+        messages.success(self.request, "دسته‌بندی اضافه شد.")
+        return super().form_valid(form)
+
+
+class CategoryUpdateView(StaffRequiredMixin, UpdateView):
+    model = Category
+    form_class = CategoryForm
+    template_name = "vendor/category_form.html"
+    success_url = reverse_lazy("vendor:categories")
+
+    def form_valid(self, form):
+        messages.success(self.request, "تغییرات ذخیره شد.")
+        return super().form_valid(form)
+
+
+class CategoryDeleteView(StaffRequiredMixin, DeleteView):
+    model = Category
+    template_name = "vendor/confirm_delete.html"
+    success_url = reverse_lazy("vendor:categories")
+
+    def form_valid(self, form):
+        messages.success(self.request, "دسته‌بندی حذف شد؛ محصولات آن در بخش «سایر» می‌مانند.")
+        return super().form_valid(form)
+
+
+@staff_required
+@require_POST
+def category_defaults(request):
+    """One-click starter categories for an empty menu."""
+    n = create_default_categories()
+    messages.success(request, f"{n} دسته پیشنهادی ساخته شد." if n else "دسته‌بندی‌ها از قبل وجود دارند.")
+    return redirect("vendor:categories")

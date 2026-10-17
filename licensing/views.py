@@ -17,8 +17,8 @@ from django.views.decorators.http import require_POST
 from management.services import throttled
 
 from . import backup, services
-from .forms import (CancelForm, LicenseCreateForm, OwnerPasswordForm, PricesForm,
-                    PurgeForm, RenewForm)
+from .forms import (CancelForm, DomainForm, LicenseCreateForm, OwnerPasswordForm,
+                    PricesForm, PurgeForm, RenewForm)
 from .models import PLAN_CHOICES, License
 
 
@@ -93,6 +93,8 @@ def license_detail(request, pk):
         "renew_form": RenewForm(initial={"plan": lic.plan if lic.plan != "forever" else "1y", "price": prices.get(lic.plan, 0)}),
         "cancel_form": CancelForm(),
         "password_form": OwnerPasswordForm(),
+        "domain_form": DomainForm(initial={"domain": lic.domain}, instance=lic),
+        "server_ip": services.server_ip(),
         "purge_form": PurgeForm(),
         "prices": prices,
         "server_url": f"https://{settings.PLATFORM_DOMAIN}",
@@ -149,6 +151,20 @@ def license_set_password(request, pk):
         raw = form.cleaned_data["password"]
     request.session["flash_creds"] = services.set_owner_password(lic, raw or None)
     messages.success(request, "رمز مدیر مجموعه تعیین شد.")
+    return redirect("developer:detail", pk=pk)
+
+
+@developer_required
+@require_POST
+def license_set_domain(request, pk):
+    """Attach (or remove) a customer's own domain. Their site then answers on it as well as on the sub-domain."""
+    lic = get_object_or_404(License, pk=pk, deleted_at__isnull=True)
+    form = DomainForm(request.POST, instance=lic)
+    if form.is_valid():
+        services.set_domain(lic, form.cleaned_data["domain"])
+        messages.success(request, "دامنه ذخیره شد." if lic.domain else "دامنه اختصاصی حذف شد.")
+    else:
+        messages.error(request, " ".join(form.errors["domain"]))
     return redirect("developer:detail", pk=pk)
 
 

@@ -17,13 +17,13 @@ class Venue(models.Model):
     accent_color = models.CharField(
         "رنگ اصلی",
         max_length=7,
-        default="#E8553E",
+        default="#059669",
         validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "رنگ باید به شکل #RRGGBB باشد")],
     )
     secondary_color = models.CharField(
         "رنگ فرعی",
         max_length=7,
-        default="#0F9D8A",
+        default="#F97316",
         validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "رنگ باید به شکل #RRGGBB باشد")],
     )
     logo = models.ImageField("لوگو", upload_to="branding", blank=True)
@@ -81,6 +81,41 @@ class Venue(models.Model):
 # -----------------------------
 # Item (Product)
 # -----------------------------
+class Category(models.Model):
+    """A menu section the vendor defines (Hot coffee, Breakfast, Kids…)."""
+    name = models.CharField("نام دسته", max_length=60)
+    emoji = models.CharField("شکلک (اختیاری)", max_length=8, blank=True)
+    sort_order = models.PositiveIntegerField("ترتیب نمایش", default=0)
+    is_active = models.BooleanField("نمایش در منو", default=True)
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        verbose_name = "دسته‌بندی"
+        verbose_name_plural = "دسته‌بندی‌ها"
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def label(self):
+        return f"{self.emoji} {self.name}".strip()
+
+
+# Suggested starter categories (offered with one click; vendors can rename, delete or add their own)
+DEFAULT_CATEGORIES = [
+    ("قهوه گرم", "☕"), ("قهوه سرد", "🧊"), ("نوشیدنی گرم", "🍵"),
+    ("نوشیدنی سرد", "🥤"), ("کیک و دسر", "🍰"),
+]
+
+
+def create_default_categories():
+    if Category.objects.exists():
+        return 0
+    Category.objects.bulk_create(
+        [Category(name=n, emoji=e, sort_order=i) for i, (n, e) in enumerate(DEFAULT_CATEGORIES)])
+    return len(DEFAULT_CATEGORIES)
+
+
 class Item(models.Model):
     CHOICES = (
         ('hot coffee', 'قهوه گرم'),
@@ -91,7 +126,10 @@ class Item(models.Model):
     )
 
     name = models.CharField(max_length=100)
-    drink_type = models.CharField(max_length=100, choices=CHOICES)
+    category = models.ForeignKey(
+        "management.Category", on_delete=models.SET_NULL, null=True, blank=True, related_name="items",
+        verbose_name="دسته‌بندی")
+    drink_type = models.CharField(max_length=100, choices=CHOICES, blank=True, default="")  # legacy, replaced by category
     specs = models.TextField(max_length=150, blank=True)
     price_cents = models.PositiveIntegerField(default=0)  # price in Toman
     customizable = models.BooleanField(

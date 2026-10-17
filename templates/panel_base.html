@@ -13,6 +13,7 @@
       {% if nav_active_orders or nav_open_requests %}<span class="pill">{{ nav_active_orders|add:nav_open_requests }}</span>{% endif %}</a>
     <a class="nav-item {% if url == 'orders' or url == 'order_detail' %}is-active{% endif %}" href="{% url 'vendor:orders' %}"><svg class="icon"><use href="#i-receipt"/></svg>تاریخچه سفارش‌ها</a>
     <a class="nav-item {% if 'item' in url %}is-active{% endif %}" href="{% url 'vendor:items' %}"><svg class="icon"><use href="#i-cup"/></svg>منو و محصولات</a>
+    <a class="nav-item {% if 'categor' in url %}is-active{% endif %}" href="{% url 'vendor:categories' %}"><svg class="icon"><use href="#i-board"/></svg>دسته‌بندی منو</a>
     <a class="nav-item {% if 'table' in url %}is-active{% endif %}" href="{% url 'vendor:tables' %}"><svg class="icon"><use href="#i-qr"/></svg>میزها و QR</a>
     <a class="nav-item {% if 'coupon' in url %}is-active{% endif %}" href="{% url 'vendor:coupons' %}"><svg class="icon"><use href="#i-coins"/></svg>کدهای تخفیف</a>
     <a class="nav-item {% if url == 'settings' %}is-active{% endif %}" href="{% url 'vendor:settings' %}"><svg class="icon"><use href="#i-sliders"/></svg>تنظیمات</a>

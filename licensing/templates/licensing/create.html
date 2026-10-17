@@ -22,7 +22,7 @@
     <div class="field" id="f-slug"><label for="{{ form.slug.id_for_label }}">{{ form.slug.label }}</label>{{ form.slug }}{{ form.slug.errors }}
       <div class="help ltr" id="slug-preview"></div></div>
     <div class="field" id="f-domain"><label for="{{ form.domain.id_for_label }}">{{ form.domain.label }} (اختیاری)</label>{{ form.domain }}{{ form.domain.errors }}
-      <div class="help">برای ثبت در سوابق؛ لایسنس به کلید وابسته است و روی هر دامنه‌ای کار می‌کند.</div></div>
+      <div class="help" id="domain-help"></div></div>
     <div id="f-owner">
       <div class="grid grid-2" style="gap:12px">
         <div class="field"><label for="{{ form.owner_username.id_for_label }}">{{ form.owner_username.label }}</label>{{ form.owner_username }}{{ form.owner_username.errors }}</div>
@@ -49,8 +49,10 @@
   function sync() {
     const hosted = mode.value === "hosted";
     document.getElementById("f-slug").hidden = !hosted;
-    document.getElementById("f-domain").hidden = hosted;
     document.getElementById("f-owner").hidden = !hosted;
+    document.getElementById("domain-help").textContent = hosted
+      ? "اگر مشتری دامنه خودش را دارد ولی سایت روی سرور ما اجرا می‌شود، اینجا بنویسید (بعد از ساخت، مراحل DNS و گواهی نمایش داده می‌شود)."
+      : "فقط برای یادداشت؛ لایسنس به کلید وابسته است و روی هر دامنه‌ای کار می‌کند.";
     document.getElementById("slug-preview").textContent = slug.value ? slug.value.toLowerCase() + "." + root : "";
   }
   mode.addEventListener("change", sync); slug.addEventListener("input", sync);

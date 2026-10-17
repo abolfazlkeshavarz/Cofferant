@@ -97,10 +97,15 @@ class License(models.Model):
         return max(0, (self.expires_at - timezone.now()).days)
 
     @property
-    def hostname(self):
+    def subdomain_host(self):
         from django.conf import settings
-        if self.mode == self.HOSTED and self.slug:
-            return f"{self.slug}.{settings.PLATFORM_DOMAIN}"
+        return f"{self.slug}.{settings.PLATFORM_DOMAIN}" if self.slug else ""
+
+    @property
+    def hostname(self):
+        """The address customers use: their own domain when set, else our sub-domain."""
+        if self.mode == self.HOSTED:
+            return self.domain or self.subdomain_host
         return self.domain
 
     # ---- actions ----

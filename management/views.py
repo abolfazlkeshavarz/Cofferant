@@ -10,7 +10,7 @@ from django.shortcuts import redirect
 from django.urls import reverse
 
 from . import payments, services
-from .models import Item, Order, ServiceRequest, Table, Venue
+from .models import Category, Item, Order, ServiceRequest, Table, Venue
 
 
 def _json_body(request):
@@ -31,16 +31,20 @@ def _error(message, status=400, **extra):
 @ensure_csrf_cookie  # the page posts orders via fetch(); make sure the CSRF cookie exists
 def public_menu(request, qr_slug):
     table = get_object_or_404(Table, qr_slug=qr_slug)
-    products = list(Item.objects.all())
-
+    categories = list(Category.objects.filter(is_active=True))
+    visible = {c.id for c in categories}
+    rank = {c.id: i for i, c in enumerate(categories)}
+    # items of a hidden category stay out of the menu; items without a category go to the end
+    products = sorted(
+        (p for p in Item.objects.all() if p.category_id is None or p.category_id in visible),
+        key=lambda p: (rank.get(p.category_id, len(rank)), p.sort_order, p.name),
+    )
     counts = {}
     for p in products:
-        counts[p.drink_type] = counts.get(p.drink_type, 0) + 1
-    types = [
-        {"code": code, "label": label, "count": counts[code]}
-        for code, label in Item.CHOICES
-        if code in counts
-    ]
+        counts[p.category_id] = counts.get(p.category_id, 0) + 1
+    types = [{"code": str(c.id), "label": c.label, "count": counts[c.id]} for c in categories if c.id in counts]
+    if counts.get(None):
+        types.append({"code": "0", "label": "سایر", "count": counts[None]})
 
     return render(
         request,
@@ -49,7 +53,6 @@ def public_menu(request, qr_slug):
             "table": table,
             "products": products,
             "types": types,
-            "type_labels": dict(Item.CHOICES),
             "popular": [p for p in products if p.is_popular and p.is_available][:8],
             "accepting": Venue.load().accepting_orders and request.license.valid,
             "tip_choices": services.TIP_CHOICES if Venue.load().tips_enabled else (),

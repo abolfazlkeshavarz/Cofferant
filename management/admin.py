@@ -51,8 +51,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(models.Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ("name", "drink_type", "price_cents", "is_available", "is_popular", "sort_order")
-    list_filter = ("drink_type", "is_available")
+    list_display = ("name", "category", "price_cents", "is_available", "is_popular", "sort_order")
+    list_filter = ("category", "is_available")
     list_editable = ("is_available", "sort_order")
     search_fields = ("name",)
 
@@ -61,3 +61,9 @@ class ItemAdmin(admin.ModelAdmin):
 class ServiceRequestAdmin(admin.ModelAdmin):
     list_display = ("table", "kind", "created_at", "resolved_at")
     list_filter = ("kind",)
+
+
+@admin.register(models.Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "emoji", "sort_order", "is_active")
+    list_editable = ("sort_order", "is_active")

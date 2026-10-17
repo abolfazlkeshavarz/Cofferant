@@ -101,9 +101,32 @@ LICENSE_SERVER_URL={{ server_url }}</div>
     </div>
     {% else %}
     <div class="card">
-      <div class="card-title"><h3>پنل روی دامنه ما</h3></div>
-      <div class="key-box">https://{{ lic.hostname }}/users/login/</div>
+      <div class="card-title"><h3>آدرس‌های پنل</h3></div>
+      <div class="key-box">https://{{ lic.subdomain_host }}/users/login/{% if lic.domain %}
+https://{{ lic.domain }}/users/login/{% endif %}</div>
       <p class="small muted mt-1 mb-0">پایگاه‌داده و تصاویر این مشتری کاملاً جدا نگهداری می‌شود.</p>
+    </div>
+    {% endif %}
+
+    {% if not lic.in_trash %}
+    <div class="card">
+      <div class="card-title"><h3>🌐 دامنه اختصاصی مشتری</h3></div>
+      <form method="post" action="{% url 'developer:set_domain' lic.pk %}" class="row">{% csrf_token %}
+        <div class="grow">{{ domain_form.domain }}</div>
+        <button class="btn btn-primary" type="submit">ذخیره</button>
+      </form>
+      {% if lic.mode == 'hosted' %}
+        <p class="small muted mt-1">مشتری خودش دامنه دارد ولی سایتش روی سرور شما اجرا می‌شود؟ سه مرحله:</p>
+        <ol class="small" style="margin:0;padding-inline-start:20px">
+          <li>دامنه را بالا ذخیره کنید.</li>
+          <li>مشتری در DNS دامنه‌اش یک رکورد <b class="ltr">A</b> به آی‌پی این سرور{% if server_ip %} (<b class="ltr">{{ server_ip }}</b>){% endif %} بسازد.</li>
+          <li>روی سرور بزنید (گواهی HTTPS رایگان می‌گیرد):
+            <div class="key-box mt-1">make add-domain DOMAIN={{ lic.domain|default:"menu.mycafe.com" }}</div></li>
+        </ol>
+        <p class="small muted mt-1 mb-0">آدرس زیردامنه شما هم همچنان کار می‌کند. اگر لایسنس لغو شود، هر دو آدرس قفل می‌شوند.</p>
+      {% else %}
+        <p class="help">برای نصب مستقل فقط برای یادداشت است.</p>
+      {% endif %}
     </div>
     {% endif %}
     <div class="card">

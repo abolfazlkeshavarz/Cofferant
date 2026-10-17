@@ -69,9 +69,23 @@
 
   <div style="grid-column:1/-1"><button class="btn btn-primary btn-lg" type="submit">ذخیره تنظیمات</button></div>
 </form>
+
+<div class="card mt-3" id="password" style="max-width:520px">
+  <div class="card-title"><h3>🔐 تغییر رمز عبور</h3><span class="muted small ltr">{{ user.get_username }}</span></div>
+  <form method="post" action="{% url 'vendor:change_password' %}" autocomplete="off">
+    {% csrf_token %}
+    {{ password_form.non_field_errors }}
+    {% for f in password_form %}
+      <div class="field"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}</div>
+    {% endfor %}
+    <div class="help" style="margin:-6px 0 14px">رمز جدید باید حداقل ۸ نویسه باشد و فقط عدد یا خیلی ساده نباشد.</div>
+    <button class="btn btn-primary" type="submit">تغییر رمز</button>
+  </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
+{% if password_open %}<script>document.getElementById("password").scrollIntoView();</script>{% endif %}
 <script>
   // live colour preview while picking
   (function () {

@@ -1,0 +1,33 @@
+{% extends "panel_base.html" %}
+{% load price_tags %}
+{% block title %}دسته‌بندی منو · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>دسته‌بندی منو</h1><div class="muted small">بخش‌های منو را خودتان بسازید؛ مشتری‌ها محصولات را به همین ترتیب می‌بینند.</div></div>
+  <a class="btn btn-primary" href="{% url 'vendor:category_add' %}"><svg class="icon"><use href="#i-plus"/></svg>دسته جدید</a>
+</div>
+
+<div class="card card-flush">
+  {% for c in categories %}
+  <div class="row" style="padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap">
+    <span class="item-thumb" style="width:44px;height:44px;font-size:1.3rem">{{ c.emoji|default:"🍽️" }}</span>
+    <div class="grow">
+      <div class="bold">{{ c.name }}</div>
+      <div class="small muted">{{ c.item_count|fa }} محصول · ترتیب {{ c.sort_order|fa }}</div>
+    </div>
+    {% if c.is_active %}<span class="badge badge-ready">نمایش</span>{% else %}<span class="badge badge-delivered">مخفی</span>{% endif %}
+    <a class="btn btn-sm" href="{% url 'vendor:items' %}?cat={{ c.id }}">محصولات</a>
+    <a class="btn btn-sm btn-icon" href="{% url 'vendor:category_edit' c.id %}" aria-label="ویرایش"><svg class="icon"><use href="#i-edit"/></svg></a>
+    <a class="btn btn-sm btn-icon btn-danger" href="{% url 'vendor:category_delete' c.id %}" aria-label="حذف"><svg class="icon"><use href="#i-trash"/></svg></a>
+  </div>
+  {% empty %}
+  <div class="empty"><svg class="icon"><use href="#i-board"/></svg><div>هنوز دسته‌ای ندارید.</div>
+    <div class="row center mt-2 row-wrap">
+      <a class="btn btn-primary" href="{% url 'vendor:category_add' %}">ساخت اولین دسته</a>
+      <form method="post" action="{% url 'vendor:category_defaults' %}">{% csrf_token %}<button class="btn" type="submit">استفاده از دسته‌های پیشنهادی</button></form>
+    </div>
+    <div class="small muted mt-1">قهوه گرم، قهوه سرد، نوشیدنی گرم، نوشیدنی سرد، کیک و دسر — بعداً می‌توانید تغییر دهید.</div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

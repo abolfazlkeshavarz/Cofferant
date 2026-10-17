@@ -15,7 +15,9 @@
 </form>
 <div class="cat-scroll" style="margin-bottom:16px">
   <a class="chip {% if not cat %}is-active{% endif %}" href="?">همه</a>
-  {% for code, label in categories %}<a class="chip {% if cat == code %}is-active{% endif %}" href="?cat={{ code|urlencode }}">{{ label }}</a>{% endfor %}
+  {% for c in categories %}<a class="chip {% if cat == c.id|stringformat:"d" %}is-active{% endif %}" href="?cat={{ c.id }}">{{ c.label }}</a>{% endfor %}
+  <a class="chip {% if cat == '0' %}is-active{% endif %}" href="?cat=0">سایر</a>
+  <a class="chip" href="{% url 'vendor:categories' %}">⚙️ مدیریت دسته‌ها</a>
 </div>
 
 <div class="card card-flush">
@@ -24,7 +26,7 @@
     {% if it.image %}<img class="item-thumb" src="{{ it.image.url }}" alt="" loading="lazy">{% else %}<span class="item-thumb">☕</span>{% endif %}
     <div class="grow" style="min-width:160px">
       <div class="bold">{{ it.name }}{% if it.is_popular %} <span class="badge badge-new badge-plain">🔥 محبوب</span>{% endif %}</div>
-      <div class="small muted">{{ it.get_drink_type_display }} · <span class="num">{{ it.price_cents|money }}</span> تومان{% if it.customizable %} · سفارشی‌سازی{% endif %}</div>
+      <div class="small muted">{{ it.category.name|default:"سایر" }} · <span class="num">{{ it.price_cents|money }}</span> تومان{% if it.customizable %} · سفارشی‌سازی{% endif %}</div>
     </div>
     <label class="row small" title="موجود / ناموجود">
       <span class="switch"><input type="checkbox" {% if it.is_available %}checked{% endif %} data-toggle="{% url 'vendor:item_toggle' it.id %}" aria-label="موجود بودن {{ it.name }}"><span></span></span>

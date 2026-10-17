@@ -113,3 +113,45 @@ class StaffActionTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.context["stats"]["today_orders"], 1)
         self.assertEqual(r.context["stats"]["top"][0]["name"], "لاته")
+
+
+class VendorPasswordChangeTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user("boss", password="Old-Pass-12345", is_staff=True)
+        self.client.force_login(self.user)
+
+    def post(self, **over):
+        data = {"old_password": "Old-Pass-12345", "new_password1": "Brand-New-Pass-77", "new_password2": "Brand-New-Pass-77", **over}
+        return self.client.post(reverse("vendor:change_password"), data)
+
+    def test_change_password_keeps_session_and_new_password_works(self):
+        r = self.post()
+        self.assertEqual(r.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Brand-New-Pass-77"))
+        self.assertEqual(self.client.get(reverse("vendor:dashboard")).status_code, 200)  # still signed in
+        fresh = self.client_class()
+        self.assertTrue(fresh.login(username="boss", password="Brand-New-Pass-77"))
+        self.assertFalse(self.client_class().login(username="boss", password="Old-Pass-12345"))
+
+    def test_wrong_current_password_is_rejected(self):
+        r = self.post(old_password="nope")
+        self.assertEqual(r.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Old-Pass-12345"))
+
+    def test_mismatch_and_weak_passwords_are_rejected(self):
+        self.assertEqual(self.post(new_password2="different").status_code, 200)
+        self.assertEqual(self.post(new_password1="12345678", new_password2="12345678").status_code, 200)
+        self.assertEqual(self.post(new_password1="short", new_password2="short").status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Old-Pass-12345"))
+
+    def test_settings_page_has_password_card_and_requires_staff_post(self):
+        self.assertContains(self.client.get(reverse("vendor:settings")), reverse("vendor:change_password"))
+        self.assertEqual(self.client.get(reverse("vendor:change_password")).status_code, 405)
+        anon = self.client_class()
+        r = anon.post(reverse("vendor:change_password"), {"old_password": "x", "new_password1": "y", "new_password2": "y"})
+        self.assertEqual(r.status_code, 302)
+

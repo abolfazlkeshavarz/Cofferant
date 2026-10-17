@@ -65,9 +65,25 @@ def hosted_state(slug):
     return state
 
 
-def invalidate(license_obj):
+def slug_for_domain(host):
+    """Tenant slug for a customer's own domain, or "" when the domain isn't registered (cached briefly)."""
+    from .models import License
+
+    key = f"lic:domain:{host}"
+    slug = cache.get(key)
+    if slug is None:
+        lic = License.objects.filter(mode=License.HOSTED, domain__iexact=host, deleted_at__isnull=True).first()
+        slug = (lic.slug or "") if lic else ""
+        cache.set(key, slug, 30)
+    return slug
+
+
+def invalidate(license_obj, *extra_domains):
     if license_obj.slug:
         cache.delete(f"lic:slug:{license_obj.slug}")
+    for d in (license_obj.domain, *extra_domains):
+        if d:
+            cache.delete(f"lic:domain:{d.lower()}")
 
 
 def _remote_fetch(key, host):

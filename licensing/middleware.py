@@ -11,8 +11,16 @@ LOCKED_PREFIXES = ("/vendor/", "/admin/")
 LOCKED_API = ("/management/api/orders/create/", "/management/api/requests/create/", "/management/pay/")
 
 
+LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
+
 class TenantMiddleware:
-    """Binds the request to a tenant database based on the sub-domain (platform mode)."""
+    """Binds the request to a tenant database (platform mode).
+
+    A request belongs to a customer when its Host is a sub-domain of the platform domain or a domain the
+    developer registered for that customer. The platform's own domain (and loopback, for health checks)
+    reaches the sales page and developer panel. Any other Host is refused with 404.
+    """
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -21,14 +29,18 @@ class TenantMiddleware:
         slug = None
         request.tenant = None
         if settings.DEPLOYMENT_MODE == "platform":
-            host = request.get_host().split(":")[0].lower()
+            host = request._get_raw_host().split(":")[0].lower().rstrip(".")
             root = settings.PLATFORM_DOMAIN
-            if host not in (root, f"www.{root}") and host.endswith("." + root):
-                slug = host[: -len(root) - 1]
-                if not tenancy.valid_slug(slug) or not tenancy.tenant_db_exists(slug):
-                    return render(request, "licensing/unknown_tenant.html", {"slug": slug}, status=404)
-                if checker.hosted_state(slug).status in ("deleted", "unknown"):
-                    return render(request, "licensing/unknown_tenant.html", {"slug": slug}, status=404)
+            if host in (root, f"www.{root}") or host in LOOPBACK_HOSTS:
+                pass
+            else:
+                if host.endswith("." + root):
+                    slug = host[: -len(root) - 1]
+                else:
+                    slug = checker.slug_for_domain(host)
+                if (not slug or not tenancy.valid_slug(slug) or not tenancy.tenant_db_exists(slug)
+                        or checker.hosted_state(slug).status in ("deleted", "unknown")):
+                    return render(request, "licensing/unknown_tenant.html", {"slug": host}, status=404)
                 tenancy.register_tenant_db(slug)
                 request.tenant = slug
         token = tenancy.current_tenant.set(slug)

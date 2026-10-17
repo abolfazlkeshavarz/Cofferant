@@ -18,6 +18,13 @@ urlpatterns = [
     path("items/<int:pk>/delete/", views.ItemDeleteView.as_view(), name="item_delete"),
     path("items/<int:pk>/toggle/", views.item_toggle, name="item_toggle"),
 
+    # Categories
+    path("categories/", views.CategoryListView.as_view(), name="categories"),
+    path("categories/add/", views.CategoryCreateView.as_view(), name="category_add"),
+    path("categories/defaults/", views.category_defaults, name="category_defaults"),
+    path("categories/<int:pk>/edit/", views.CategoryUpdateView.as_view(), name="category_edit"),
+    path("categories/<int:pk>/delete/", views.CategoryDeleteView.as_view(), name="category_delete"),
+
     # Tables
     path("tables/", views.TableListView.as_view(), name="tables"),
     path("tables/add/", views.TableCreateView.as_view(), name="table_add"),
@@ -41,4 +48,5 @@ urlpatterns = [
     path("coupons/<int:pk>/delete/", views.CouponDeleteView.as_view(), name="coupon_delete"),
 
     path("settings/", views.venue_settings, name="settings"),
+    path("settings/password/", views.change_password, name="change_password"),
 ]

@@ -15,7 +15,8 @@
   <div class="card">
     <div class="field"><label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>{{ form.name }}{{ form.name.errors }}</div>
     <div class="grid grid-2" style="gap:12px">
-      <div class="field"><label for="{{ form.drink_type.id_for_label }}">{{ form.drink_type.label }}</label>{{ form.drink_type }}{{ form.drink_type.errors }}</div>
+      <div class="field"><label for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>{{ form.category }}{{ form.category.errors }}
+        <div class="help"><a href="{% url 'vendor:category_add' %}">+ دسته جدید بسازید</a></div></div>
       <div class="field"><label for="{{ form.price_cents.id_for_label }}">{{ form.price_cents.label }}</label>{{ form.price_cents }}{{ form.price_cents.errors }}</div>
     </div>
     <div class="field"><label for="{{ form.specs.id_for_label }}">{{ form.specs.label }}</label>{{ form.specs }}{{ form.specs.errors }}</div>

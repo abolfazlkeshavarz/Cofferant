@@ -51,7 +51,7 @@
 
   <div class="menu-grid" id="grid">
     {% for p in products %}
-    <article class="dish {% if not p.is_available %}is-off{% endif %}" id="dish-{{ p.id }}" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.price_cents }}" data-custom="{{ p.customizable|yesno:'1,0' }}" data-popular="{{ p.is_popular|yesno:'1,0' }}" data-type="{{ p.drink_type }}" data-search="{{ p.name|lower }} {{ p.specs|lower }}">
+    <article class="dish {% if not p.is_available %}is-off{% endif %}" id="dish-{{ p.id }}" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.price_cents }}" data-custom="{{ p.customizable|yesno:'1,0' }}" data-popular="{{ p.is_popular|yesno:'1,0' }}" data-type="{{ p.category_id|default:'0' }}" data-search="{{ p.name|lower }} {{ p.specs|lower }}">
       {% if p.image %}<img class="dish-img" src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="dish-img" aria-hidden="true">☕</div>{% endif %}
       <div class="dish-body">
         <div class="dish-name">{{ p.name }}{% if p.is_popular %}<span class="badge badge-new badge-plain">🔥</span>{% endif %}</div>
