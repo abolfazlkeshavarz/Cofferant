@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load price_tags %}
+{% block title %}پنل توسعه‌دهنده · {{ venue.name }}{% endblock %}
+{% block body %}
+<header class="topnav">
+  <div class="container">
+    <a class="brand" href="{% url 'developer:dashboard' %}"><span class="brand-mark"><svg class="icon"><use href="#i-shield"/></svg></span>پنل توسعه‌دهنده</a>
+    <nav class="navlinks">
+      <a href="{% url 'developer:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="is-active"{% endif %}>نمای کلی</a>
+      <a href="{% url 'developer:list' %}" {% if request.resolver_match.url_name in 'list detail' %}class="is-active"{% endif %}>مشتریان و لایسنس‌ها</a>
+      <a href="{% url 'developer:create' %}" {% if request.resolver_match.url_name == 'create' %}class="is-active"{% endif %}>مشتری جدید</a>
+      <a href="{% url 'vendor:settings' %}">برند و تماس پلتفرم</a>
+    </nav>
+    <span class="grow"></span>
+    <button class="btn btn-ghost btn-icon btn-sm" data-theme-toggle type="button" aria-label="پوسته"><svg class="icon"><use href="#i-moon"/></svg></button>
+    <form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}<button class="btn btn-sm" type="submit">خروج</button></form>
+  </div>
+</header>
+<nav class="container cat-scroll dev-mobile" aria-label="ناوبری">
+  <a class="chip {% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'developer:dashboard' %}">نمای کلی</a>
+  <a class="chip {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}is-active{% endif %}" href="{% url 'developer:list' %}">مشتریان</a>
+  <a class="chip {% if request.resolver_match.url_name == 'create' %}is-active{% endif %}" href="{% url 'developer:create' %}">+ مشتری جدید</a>
+  <a class="chip" href="{% url 'vendor:settings' %}">برند پلتفرم</a>
+</nav>
+<main class="container" style="padding:28px 0 60px">{% block content %}{% endblock %}</main>
+{% endblock %}

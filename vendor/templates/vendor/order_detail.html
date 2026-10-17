@@ -1,112 +1,87 @@
-{% extends "vendor/base_vendor.html" %}
-{% load static %}
-
+{% extends "panel_base.html" %}
 {% load price_tags %}
+{% block title %}سفارش {{ order.id|fa }} · {{ venue.name }}{% endblock %}
 
-{% block vendor_content %}
-<style>
-/* 1. Centering Container and Layout */
-.detail-container-centered {
-    max-width: 600px; /* Constrain the detail box width for centering */
-    margin: 0 auto; /* Center the box */
-    padding: 25px;
-    border-radius: 8px;
-    background-color: #f8f9fa; /* Light background for visibility */
-    text-align: right; /* Ensure text is right-aligned within the container */
-}
-
-/* 2. Clear Padding and Spacing */
-.detail-container-centered h3,
-.detail-container-centered h5,
-.detail-container-centered p {
-    margin-bottom: 1rem; /* Consistent spacing */
-}
-
-/* 3. List Item Styling for Clarity */
-.detail-container-centered ul {
-    list-style: none; /* Remove default bullet points */
-    padding-right: 0; /* Remove default list padding in RTL */
-    border-top: 1px solid #e9ecef;
-    padding-top: 10px;
-    margin-bottom: 1.5rem;
-}
-.detail-container-centered ul li {
-    padding: 5px 0;
-    border-bottom: 1px dashed #dee2e6;
-    display: flex; /* Use flex to control alignment of components */
-    justify-content: space-between;
-    align-items: flex-start;
-}
-.detail-container-centered ul li:last-child {
-    border-bottom: none;
-}
-/* Style for the text portion (quantity, name, note) */
-.item-text-wrapper {
-    flex-grow: 1;
-    margin-right: 10px;
-}
-.item-price-wrapper {
-    flex-shrink: 0;
-}
-</style>
-
-<div class="container mt-4" dir="rtl">
-    <div class="detail-container-centered">
-        <h3 class="text-center">جزئیات سفارش #{{ order.id }}</h3>
-
-        <p><strong class="text-dark">میز:</strong> <span class="text-info">{{ order.table }}</span></p>
-        <p><strong class="text-dark">وضعیت:</strong> <span class="text-info">{{ order.get_status_display }}</span></p>
-        <p><strong class="text-dark">نام مشتری:</strong> <span class="text-info">{{ order.customer_name }}</span></p>
-        <p><strong class="text-dark">تلفن:</strong> <span class="text-info">{{ order.customer_phone }}</span></p>
-        <p><strong class="text-dark">یادداشت سفارش:</strong> <span class="text-info">{{ order.notes }}</span></p>
-
-        <h5 class="mt-4">آیتم‌ها</h5>
-        <ul>
-            {% for it in order.items.all %}
-                <li>
-                    <div class="item-text-wrapper">
-                        {# Product Name: prominent (text-dark). Quantity and Note: quiet blue (text-info) #}
-                        <span class="text-info">{{ it.quantity }} ×</span> 
-                        <strong class="text-dark">{{ it.product.name }}</strong> 
-                        {% if it.note %} <span class="text-info">({{ it.note }})</span> {% endif %} 
-                    </div>
-                    
-                    <div class="item-price-wrapper text-primary font-weight-bold">
-                        {# Line Total: Highlighted in Primary Blue (Financial Data) #}
-                         {{ it.line_total|money }}
-                    </div>
-                </li>
-            {% endfor %}
-        </ul>
-
-        <p class="mt-3 text-dark" style="font-size: 1.2rem; font-weight: bold; border-top: 2px solid #ccc; padding-top: 10px;">
-            <strong class="text-dark">مبلغ کل:</strong> 
-            <span class="float-left text-primary">{{ order.total_cents|money }} تومان</span>
-        </p>
-
-        {% if order.status != "delivered" %}
-            <div class="text-center mt-4">
-                <button class="btn btn-success" onclick="completeOrder({{ order.id }})">علامت‌گذاری تکمیل شده</button>
-            </div>
-        {% endif %}
-    </div>
+{% block content %}
+<div class="page-head">
+  <div class="row">
+    <a class="btn btn-ghost btn-icon" href="{% url 'vendor:orders' %}" aria-label="بازگشت"><svg class="icon" style="transform:scaleX(-1)"><use href="#i-chevron"/></svg></a>
+    <h1>سفارش #{{ order.id|fa }}</h1>
+    <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+  </div>
+  <button class="btn btn-sm no-print" onclick="window.print()"><svg class="icon"><use href="#i-printer"/></svg>چاپ</button>
 </div>
 
+<div class="grid split" style="align-items:start">
+  <div class="card">
+    {% if order.status != 'cancelled' %}
+    <div class="stepper" aria-label="روند سفارش">
+      {% for s in statuses %}
+        <div class="step" data-step="{{ s }}"><i>{{ forloop.counter|fa }}</i>{% if s == 'new' %}ثبت{% elif s == 'preparing' %}آماده‌سازی{% elif s == 'ready' %}آماده{% else %}تحویل{% endif %}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <ul class="lines">
+      {% for it in order.items.all %}
+      <li>
+        <span><b class="text-warn num">{{ it.quantity|fa }}×</b> {{ it.display_name }}{% if it.note %}<div class="small muted">↳ {{ it.note }}</div>{% endif %}</span>
+        <span class="num bold">{{ it.line_total|money }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <div style="border-top:2px solid var(--line);padding-top:10px;margin-top:6px">
+      {% if order.discount_cents or order.service_cents or order.tax_cents or order.tip_cents %}
+        <div class="sum-row"><span>جمع اقلام</span><span class="num">{{ order.subtotal_cents|money }}</span></div>
+        {% if order.discount_cents %}<div class="sum-row"><span>تخفیف {{ order.coupon_code }}</span><span class="num neg">−{{ order.discount_cents|money }}</span></div>{% endif %}
+        {% if order.service_cents %}<div class="sum-row"><span>حق سرویس</span><span class="num">{{ order.service_cents|money }}</span></div>{% endif %}
+        {% if order.tax_cents %}<div class="sum-row"><span>مالیات</span><span class="num">{{ order.tax_cents|money }}</span></div>{% endif %}
+        {% if order.tip_cents %}<div class="sum-row"><span>انعام</span><span class="num">{{ order.tip_cents|money }}</span></div>{% endif %}
+      {% endif %}
+      <div class="sum-row total"><span>مبلغ کل</span><span class="num">{{ order.total_cents|money }} تومان</span></div>
+      <div class="small muted">روش پرداخت: {{ order.get_payment_method_display }}</div>
+    </div>
+
+    {% if order.status != 'cancelled' and order.status != 'delivered' %}
+    <div class="row mt-2 no-print">
+      {% if order.next_status %}<button class="btn btn-primary grow" data-post="{% url 'vendor:order_status' order.id %}" data-fields='{"status":"{{ order.next_status }}"}' data-reload>
+        ← انتقال به «{% if order.next_status == 'preparing' %}در حال آماده‌سازی{% elif order.next_status == 'ready' %}آماده تحویل{% else %}تحویل شده{% endif %}»</button>{% endif %}
+      <button class="btn btn-danger" data-post="{% url 'vendor:order_status' order.id %}" data-fields='{"status":"cancelled"}' data-confirm="سفارش لغو شود؟" data-reload>لغو سفارش</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <div class="card-title"><h3>اطلاعات</h3></div>
+      <ul class="lines small">
+        <li><span class="muted">میز</span><b>{{ order.table.number|default:"—"|fa }}</b></li>
+        <li><span class="muted">زمان ثبت</span><b class="num">{{ order.created_at|date:"Y/m/d H:i"|fa }}</b></li>
+        <li><span class="muted">مشتری</span><b>{{ order.customer_name|default:"—" }}</b></li>
+        <li><span class="muted">تلفن</span><b class="ltr">{{ order.customer_phone|default:"—" }}</b></li>
+        {% if order.notes %}<li><span class="muted">یادداشت</span><b>{{ order.notes }}</b></li>{% endif %}
+        {% if order.rating %}<li><span class="muted">امتیاز مشتری</span><b>{{ "★★★★★"|slice:order.rating }} <span class="muted">{{ order.feedback }}</span></b></li>{% endif %}
+      </ul>
+    </div>
+    {% if order.status != 'cancelled' %}
+    <div class="card no-print">
+      <div class="card-title"><h3>پرداخت</h3>{% if order.paid %}<span class="badge badge-paid">پرداخت شد</span>{% else %}<span class="badge badge-unpaid">پرداخت نشده</span>{% endif %}</div>
+      <button class="btn {% if order.paid %}{% else %}btn-ok{% endif %} btn-block" data-post="{% url 'vendor:order_paid' order.id %}" data-fields='{"paid":"{% if order.paid %}0{% else %}1{% endif %}"}' data-reload>
+        <svg class="icon"><use href="#i-cash"/></svg>{% if order.paid %}لغو علامت پرداخت{% else %}ثبت دریافت وجه{% endif %}</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-function getCookie(name) {
-  let v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return v ? v.pop() : '';
-}
-function completeOrder(id){
-  if (!confirm('آیا مطمئن هستید؟')) return;
-  fetch("{% url 'vendor:order_complete' 0 %}".replace('/0/','/'+id+'/'), {
-    method: 'POST',
-    headers: {'X-CSRFToken': getCookie('csrftoken'), 'Content-Type':'application/json'},
-    body: JSON.stringify({})
-  }).then(r=>r.json()).then(j=>{
-    if (j.ok) location.reload();
-    else alert(j.error || 'خطا');
-  }).catch(e=>alert('خطا:'+e));
-}
+  (function () {
+    const order = ["new", "preparing", "ready", "delivered"], cur = order.indexOf("{{ order.status }}");
+    document.querySelectorAll(".step").forEach((el, i) => {
+      if (i <= cur) el.classList.add("is-done");
+      if (i === cur) el.classList.add("is-now");
+    });
+  })();
 </script>
 {% endblock %}

@@ -1,13 +1,128 @@
-{% extends "vendor/base_vendor.html" %}
+{% extends "panel_base.html" %}
+{% load price_tags %}
+{% block title %}داشبورد · {{ venue.name }}{% endblock %}
 
-{% block vendor_content %}
-<div class="container mt-4" dir="rtl">
-  <h3 class="text-right">داشبورد مدیریت فروشگاه</h3>
-  <div class="row mt-3">
-    <div class="col-md-3 mb-3"><div class="card p-3"><h4>{{ items_count }}</h4><p>محصول</p><a href="{% url 'vendor:items' %}" class="btn btn-sm btn-primary">مدیریت</a></div></div>
-    <div class="col-md-3 mb-3"><div class="card p-3"><h4>{{ tables_count }}</h4><p>میز</p><a href="{% url 'vendor:tables' %}" class="btn btn-sm btn-primary">مدیریت</a></div></div>
-    <div class="col-md-3 mb-3"><div class="card p-3"><h4>{{ orders_count }}</h4><p>سفارش</p><a href="{% url 'vendor:orders' %}" class="btn btn-sm btn-primary">مشاهده</a></div></div>
-    <div class="col-md-3 mb-3"><div class="card p-3 bg-warning text-dark"><h4>{{ new_orders }}</h4><p>سفارش جدید</p><a href="{% url 'vendor:orders' %}" class="btn btn-sm btn-dark">مشاهده</a></div></div>
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>سلام، {{ user.get_username }} 👋</h1>
+    <div class="muted small">خلاصه عملکرد {{ venue.name }} در یک نگاه</div>
+  </div>
+  <div class="row">
+    <a class="btn btn-primary" href="{% url 'vendor:board' %}"><svg class="icon"><use href="#i-board"/></svg>سفارش‌های زنده
+      {% if stats.active_orders %}<span class="badge badge-plain" style="background:rgba(255,255,255,.25);color:inherit">{{ stats.active_orders|fa }}</span>{% endif %}</a>
+  </div>
+</div>
+
+{% if not venue.accepting_orders %}
+<div class="alert-strip"><svg class="icon"><use href="#i-bell"/></svg><span class="grow">دریافت سفارش آنلاین خاموش است؛ مشتری‌ها فقط می‌توانند منو را ببینند.</span>
+  <a class="btn btn-sm" href="{% url 'vendor:settings' %}">فعال‌سازی</a></div>
+{% endif %}
+{% if stats.open_requests %}
+<div class="alert-strip"><svg class="icon"><use href="#i-hand"/></svg><span class="grow">{{ stats.open_requests|fa }} درخواست باز از میزها (گارسون / صورت‌حساب)</span>
+  <a class="btn btn-sm" href="{% url 'vendor:board' %}">مشاهده</a></div>
+{% endif %}
+
+<div class="grid grid-4">
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-coins"/></svg></span>فروش امروز</span>
+    <span class="value"><span class="num">{{ stats.today_revenue|money }}</span> <span class="unit">تومان</span></span>
+    {% if stats.revenue_delta is not None %}
+      <span class="delta {% if stats.revenue_delta >= 0 %}up{% else %}down{% endif %}">{% if stats.revenue_delta >= 0 %}▲{% else %}▼{% endif %} {{ stats.revenue_delta|fa }}٪ نسبت به دیروز</span>
+    {% else %}<span class="muted small">—</span>{% endif %}
+  </div>
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-receipt"/></svg></span>سفارش‌های امروز</span>
+    <span class="value num">{{ stats.today_orders|fa }}</span>
+    <span class="muted small">میانگین هر سفارش {{ stats.avg_ticket|money }} تومان</span>
+  </div>
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-clock"/></svg></span>در جریان</span>
+    <span class="value num">{{ stats.active_orders|fa }}</span>
+    <span class="muted small">سفارش جدید / در حال آماده‌سازی</span>
+  </div>
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-star"/></svg></span>رضایت مشتری</span>
+    <span class="value num">{% if stats.rating_avg %}{{ stats.rating_avg|floatformat:1|fa }}{% else %}—{% endif %}</span>
+    <span class="muted small">{% if stats.rating_count %}از {{ stats.rating_count|fa }} نظر{% else %}هنوز نظری ثبت نشده{% endif %}</span>
+  </div>
+</div>
+
+{% if checklist_done < 5 %}
+<div class="card mt-2">
+  <div class="card-title"><h3>🚀 راه‌اندازی کافه شما</h3><span class="muted small">{{ checklist_done|fa }} از ۵ مرحله</span></div>
+  <div class="progress" style="margin-bottom:10px"><i style="width:{{ checklist_pct }}%"></i></div>
+  {% for label, ok, route in checklist %}
+    <a class="todo {% if ok %}done{% endif %}" href="{% url route %}"><span class="dot">{% if ok %}<svg class="icon" style="width:14px;height:14px"><use href="#i-check"/></svg>{% endif %}</span><span>{{ label }}</span></a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid grid-3 mt-2">
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-coins"/></svg></span>انعام کارکنان (۳۰ روز)</span>
+    <span class="value"><span class="num">{{ stats.tips_month|money }}</span> <span class="unit">تومان</span></span>
+    <span class="muted small">{% if venue.tips_enabled %}از انعام‌های ثبت‌شده در سفارش‌ها{% else %}قابلیت انعام خاموش است{% endif %}</span>
+  </div>
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-cash"/></svg></span>سهم پرداخت آنلاین</span>
+    <span class="value num">{{ stats.online_share|fa }}٪</span>
+    <span class="muted small">{% if venue.online_payment_ready %}از فروش ۳۰ روز اخیر{% else %}<a href="{% url 'vendor:settings' %}">فعال‌سازی درگاه زرین‌پال ←</a>{% endif %}</span>
+  </div>
+  <div class="card stat">
+    <span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-flame"/></svg></span>تخفیف‌های داده‌شده</span>
+    <span class="value"><span class="num">{{ stats.discounts_month|money }}</span> <span class="unit">تومان</span></span>
+    <span class="muted small"><a href="{% url 'vendor:coupons' %}">مدیریت کدهای تخفیف ←</a></span>
+  </div>
+</div>
+
+<div class="grid split mt-2">
+  <div class="card">
+    <div class="card-title"><h3>فروش ۷ روز اخیر</h3><span class="muted small">جمع: {{ stats.week_total|money }} تومان</span></div>
+    <div class="vbars" role="img" aria-label="نمودار فروش هفتگی">
+      {% for d in stats.week %}
+      <div class="vbar" title="{{ d.revenue|money }} تومان">
+        <span class="cap num">{% if d.revenue %}{{ d.k|fa }}{% endif %}</span>
+        <div class="bar {% if not d.revenue %}zero{% endif %}" style="height:{{ d.pct }}%"></div>
+        <span class="cap">{{ d.date|date:"D" }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="muted tiny mt-1">اعداد بالای ستون‌ها به هزار تومان است.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h3>پرفروش‌ترین‌ها (۳۰ روز)</h3></div>
+    {% for t in stats.top %}
+      <div class="hbar"><span class="bold">{{ t.name|default:"—" }}</span><span class="muted small num">{{ t.qty|fa }} عدد</span>
+        <div class="track"><div class="fill" style="width:{{ t.pct }}%"></div></div></div>
+    {% empty %}
+      <div class="empty"><svg class="icon"><use href="#i-cup"/></svg><div>با ثبت اولین سفارش‌ها اینجا پر می‌شود</div></div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid split mt-2">
+  <div class="card">
+    <div class="card-title"><h3>ساعات شلوغی</h3><span class="muted small">۳۰ روز گذشته</span></div>
+    <div class="heat" role="img" aria-label="ساعات شلوغی">
+      {% for h in stats.busy %}<div style="--v:{{ h.pct }}" title="ساعت {{ h.hour|fa }}: {{ h.count|fa }} سفارش"></div>{% endfor %}
+    </div>
+    <div class="heat-cap"><span>{{ 7|fa }}:۰۰</span><span>{{ 15|fa }}:۰۰</span><span>{{ 23|fa }}:۰۰</span></div>
+    <p class="muted small mt-1 mb-0">رنگ پررنگ‌تر یعنی سفارش بیشتر — برای برنامه‌ریزی نیروها استفاده کنید.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h3>دسترسی سریع</h3></div>
+    <div class="col">
+      <a class="btn" href="{% url 'vendor:item_add' %}"><svg class="icon"><use href="#i-plus"/></svg>افزودن محصول</a>
+      <a class="btn" href="{% url 'vendor:tables_print' %}"><svg class="icon"><use href="#i-printer"/></svg>چاپ QR همه میزها</a>
+      <a class="btn" href="{% url 'vendor:orders_export' %}"><svg class="icon"><use href="#i-download"/></svg>خروجی اکسل سفارش‌ها</a>
+    </div>
+    <div class="muted small mt-2">
+      {{ counts.items|fa }} محصول · {{ counts.tables|fa }} میز{% if counts.unavailable %} · <span class="text-warn">{{ counts.unavailable|fa }} ناموجود</span>{% endif %}
+      {% if stats.unpaid_total %}<br><span class="text-bad">{{ stats.unpaid_total|money }} تومان تحویل‌شده و پرداخت‌نشده</span>{% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

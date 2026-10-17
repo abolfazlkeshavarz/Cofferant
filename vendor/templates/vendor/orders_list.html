@@ -1,96 +1,63 @@
-{% extends "vendor/base_vendor.html" %}
-{% load static %}
-{% load price_tags %} {# IMPORTANT: Added price_tags load for the 'money' filter #}
+{% extends "panel_base.html" %}
+{% load price_tags %}
+{% block title %}سفارش‌ها · {{ venue.name }}{% endblock %}
 
-{% block vendor_content %}
-<div class="container mt-4" dir="rtl">
-  <h3>سفارش‌ها</h3>
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    
-    {# 1. Status Filter (Filtering by Delivery Condition) #}
-    <div class="btn-group" role="group">
-      <a href="{% url 'vendor:orders' %}?status=all&sort={{ request.GET.sort|default:'-created_at' }}" 
-         class="btn btn-sm {% if not request.GET.status or request.GET.status == 'all' %}btn-info{% else %}btn-outline-info{% endif %}">همه</a>
-      <a href="{% url 'vendor:orders' %}?status=new&sort={{ request.GET.sort|default:'-created_at' }}" 
-         class="btn btn-sm {% if request.GET.status == 'new' %}btn-warning{% else %}btn-outline-warning{% endif %}">جدید</a>
-      <a href="{% url 'vendor:orders' %}?status=delivered&sort={{ request.GET.sort|default:'-created_at' }}" 
-         class="btn btn-sm {% if request.GET.status == 'delivered' %}btn-success{% else %}btn-outline-success{% endif %}">تحویل شده</a>
-      {# You can add more status filters here if applicable (e.g., preparing, ready) #}
-    </div>
-
-    {# 2. Date Sort (Sorting by Time) #}
-    <div class="btn-group" role="group">
-      <span class="mr-2 pt-1 text-secondary">مرتب‌سازی زمان:</span>
-      <a href="{% url 'vendor:orders' %}?status={{ request.GET.status|default:'all' }}&sort=-created_at" 
-         class="btn btn-sm {% if not request.GET.sort or request.GET.sort == '-created_at' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">جدیدترین</a>
-      <a href="{% url 'vendor:orders' %}?status={{ request.GET.status|default:'all' }}&sort=created_at" 
-         class="btn btn-sm {% if request.GET.sort == 'created_at' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">قدیمی‌ترین</a>
-    </div>
-  </div>
-  <div class="table-responsive"> <table class="table table-bordered mt-3">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>میز</th>
-          <th>وضعیت</th>
-          <th>مبلغ کل</th> 
-          <th>زمان</th>
-          <th>عملیات</th>
-        </tr>
-      </thead>
-      <tbody id="orders-tbody">
-        {% for order in orders %}
-        <tr id="order-row-{{ order.id }}" class="{% if order.status == 'new' %}table-warning{% endif %}">
-          <td>{{ order.id }}</td>
-          <td>{{ order.table }}</td>
-          <td id="order-status-{{ order.id }}">{{ order.get_status_display }}</td>
-          <td>{{ order.total_cents|money }}</td> 
-          <td>{{ order.created_at|date:"Y-m-d H:i" }}</td>
-          <td>
-            <a class="btn btn-sm btn-info" href="{% url 'vendor:order_detail' order.id %}">نمایش</a>
-            {% if order.status != "delivered" %}
-            <button class="btn btn-sm btn-success" onclick="completeOrder({{ order.id }})">تکمیل شد</button>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
+{% block content %}
+<div class="page-head">
+  <h1>تاریخچه سفارش‌ها</h1>
+  <a class="btn btn-sm" href="{% url 'vendor:orders_export' %}?{{ qs }}"><svg class="icon"><use href="#i-download"/></svg>خروجی اکسل</a>
 </div>
 
-<script>
-function getCookie(name){
-  let v = document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
-  return v ? v.pop() : '';
-}
+<form method="get" class="row row-wrap" style="margin-bottom:14px">
+  <div class="search grow" style="min-width:220px">
+    <svg class="icon"><use href="#i-search"/></svg>
+    <input class="input" type="search" name="q" value="{{ q }}" placeholder="جستجو: شماره سفارش، نام، تلفن یا میز">
+  </div>
+  <input type="hidden" name="status" value="{{ status }}">
+  <select class="input" name="sort" style="width:auto" onchange="this.form.submit()">
+    <option value="-created_at" {% if sort != 'created_at' %}selected{% endif %}>جدیدترین</option>
+    <option value="created_at" {% if sort == 'created_at' %}selected{% endif %}>قدیمی‌ترین</option>
+  </select>
+  <button class="btn btn-primary" type="submit">جستجو</button>
+</form>
 
-function completeOrder(id){
-  if (!confirm('آیا سفارش به عنوان تکمیل شده علامت زده شود؟')) return;
-  fetch("{% url 'vendor:order_complete' 0 %}".replace('/0/','/'+id+'/'), {
-    method: 'POST',
-    headers: {
-      'X-CSRFToken': getCookie('csrftoken'),
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({})
-  }).then(r=>r.json()).then(data=>{
-    if (data.ok){
-      // Update UI on success
-      let statusCell = document.getElementById('order-status-'+id);
-      if (statusCell) {
-        statusCell.innerText = 'تحویل شده';
-        document.getElementById('order-row-'+id).classList.remove('table-warning');
-        // Disable the button after completion
-        const button = statusCell.nextElementSibling.nextElementSibling.querySelector('button');
-        if (button) button.remove();
-      }
-    } else {
-      alert(data.error || 'خطا');
-    }
-  }).catch(e=>{ alert('خطا: '+e); });
-}
-</script>
+<div class="cat-scroll" style="margin-bottom:16px">
+  <a class="chip {% if status == 'all' %}is-active{% endif %}" href="?status=all&sort={{ sort }}">همه <span class="count">{{ total_all|fa }}</span></a>
+  {% for code, label in statuses %}
+    <a class="chip {% if status == code %}is-active{% endif %}" href="?status={{ code }}&sort={{ sort }}">{{ label }}</a>
+  {% endfor %}
+  <a class="chip {% if status == 'unpaid' %}is-active{% endif %}" href="?status=unpaid&sort={{ sort }}">پرداخت‌نشده</a>
+</div>
 
+<div class="card card-flush">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>#</th><th>میز</th><th>اقلام</th><th>وضعیت</th><th>پرداخت</th><th>مبلغ</th><th>زمان</th><th></th></tr></thead>
+      <tbody>
+      {% for o in page %}
+        <tr class="{% if o.status == 'new' %}is-new{% endif %}">
+          <td class="bold num">{{ o.id|fa }}</td>
+          <td>{{ o.table.number|default:"—"|fa }}</td>
+          <td class="small muted" style="max-width:260px">{% for i in o.items.all|slice:":3" %}{{ i.quantity|fa }}× {{ i.display_name }}{% if not forloop.last %}، {% endif %}{% endfor %}{% if o.items.all|length > 3 %} …{% endif %}</td>
+          <td><span class="badge badge-{{ o.status }}">{{ o.get_status_display }}</span></td>
+          <td>{% if o.status == 'cancelled' %}<span class="muted">—</span>{% elif o.paid %}<span class="badge badge-paid">پرداخت شد</span>{% else %}<span class="badge badge-unpaid">پرداخت نشده</span>{% endif %}</td>
+          <td class="num bold">{{ o.total_cents|money }}</td>
+          <td class="small muted num">{{ o.created_at|date:"Y/m/d H:i"|fa }}</td>
+          <td><a class="btn btn-sm" href="{% url 'vendor:order_detail' o.id %}">جزئیات</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8"><div class="empty"><svg class="icon"><use href="#i-receipt"/></svg><div>سفارشی پیدا نشد</div></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page.paginator.num_pages > 1 %}
+<div class="row center mt-2">
+  {% if page.has_previous %}<a class="btn btn-sm" href="?{{ qs }}&page={{ page.previous_page_number }}">قبلی</a>{% endif %}
+  <span class="muted small">صفحه {{ page.number|fa }} از {{ page.paginator.num_pages|fa }}</span>
+  {% if page.has_next %}<a class="btn btn-sm" href="?{{ qs }}&page={{ page.next_page_number }}">بعدی</a>{% endif %}
+</div>
+{% endif %}
 {% endblock %}

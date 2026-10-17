@@ -1,0 +1,130 @@
+{% extends "panel_base.html" %}
+{% block title %}سفارش‌های زنده · {{ venue.name }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>سفارش‌های زنده</h1>
+    <div class="muted small"><span class="live-dot" id="live-dot"></span> <span id="live-text">در حال اتصال…</span> · امروز <b id="done-today">۰</b> سفارش تحویل شد</div>
+  </div>
+  <div class="row">
+    <button class="btn btn-sm" id="sound-btn" type="button"><svg class="icon"><use href="#i-bell"/></svg><span>صدای اعلان: خاموش</span></button>
+  </div>
+</div>
+
+<div id="requests"></div>
+
+<div class="board" id="board">
+  <section class="lane" aria-label="جدید"><div class="lane-head"><span>🆕 جدید</span><span class="count" id="c-new">۰</span></div><div id="l-new"></div></section>
+  <section class="lane" aria-label="در حال آماده‌سازی"><div class="lane-head"><span>👨‍🍳 در حال آماده‌سازی</span><span class="count" id="c-preparing">۰</span></div><div id="l-preparing"></div></section>
+  <section class="lane" aria-label="آماده تحویل"><div class="lane-head"><span>✅ آماده تحویل</span><span class="count" id="c-ready">۰</span></div><div id="l-ready"></div></section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const { api, esc, fa, money, toast, safe } = App;
+  const FEED = "{% url 'vendor:board_feed' %}";
+  const NEXT = { new: ["preparing", "شروع آماده‌سازی"], preparing: ["ready", "آماده شد"], ready: ["delivered", "تحویل داده شد"] };
+  const SET_STATUS = (id) => "{% url 'vendor:order_status' 0 %}".replace("/0/", "/" + id + "/");
+  const RESOLVE = (id) => "{% url 'vendor:request_resolve' 0 %}".replace("/0/", "/" + id + "/");
+  let known = null, soundOn = safe.get("board-sound") === "1", failures = 0, busy = false;
+
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [880, 1175].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(.0001, ctx.currentTime + i * .18);
+        g.gain.exponentialRampToValueAtTime(.25, ctx.currentTime + i * .18 + .02);
+        g.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + i * .18 + .16);
+        o.start(ctx.currentTime + i * .18); o.stop(ctx.currentTime + i * .18 + .17);
+      });
+    } catch (e) { /* audio blocked */ }
+  }
+  function syncSoundBtn() {
+    document.querySelector("#sound-btn span").textContent = "صدای اعلان: " + (soundOn ? "روشن" : "خاموش");
+  }
+  document.getElementById("sound-btn").addEventListener("click", () => {
+    soundOn = !soundOn; safe.set("board-sound", soundOn ? "1" : "0"); syncSoundBtn(); if (soundOn) beep();
+  });
+  syncSoundBtn();
+
+  function ticket(o) {
+    const late = o.minutes >= 15 && o.status !== "ready";
+    const nx = NEXT[o.status];
+    return `<article class="ticket ${late ? "is-late" : ""}" data-id="${o.id}">
+      <div class="ticket-head">
+        <span class="row"><span class="table-tag">${esc(fa(o.table))}</span><span class="small muted">#${fa(o.id)}</span></span>
+        <span class="small ${late ? "text-bad bold" : "muted"}">${fa(o.minutes)} دقیقه پیش</span>
+      </div>
+      <ul>${o.items.map(i => `<li><span class="q">${fa(i.qty)}×</span><span>${esc(i.name)}${i.note ? `<div class="note">↳ ${esc(i.note)}</div>` : ""}</span></li>`).join("")}</ul>
+      ${o.notes ? `<div class="small" style="background:var(--surface-2);padding:8px 10px;border-radius:10px;margin-bottom:10px">📝 ${esc(o.notes)}</div>` : ""}
+      <div class="row between small muted" style="margin-bottom:10px"><span>${esc(o.customer_name || "")}</span><b>${money(o.total)} تومان</b></div>
+      <div class="row">
+        <button class="btn btn-primary btn-sm grow" data-act="${nx[0]}" data-id="${o.id}">${nx[1]}</button>
+        <a class="btn btn-sm btn-icon" href="{% url 'vendor:orders' %}${o.id}/" aria-label="جزئیات">${App.icon("receipt")}</a>
+        <button class="btn btn-sm btn-icon btn-danger" data-act="cancelled" data-id="${o.id}" aria-label="لغو">${App.icon("x")}</button>
+      </div>
+    </article>`;
+  }
+
+  function render(data) {
+    const lanes = { new: [], preparing: [], ready: [] };
+    data.orders.forEach(o => lanes[o.status] && lanes[o.status].push(o));
+    Object.keys(lanes).forEach(k => {
+      document.getElementById("l-" + k).innerHTML = lanes[k].map(ticket).join("") ||
+        `<div class="empty small" style="padding:28px 8px">خالی</div>`;
+      document.getElementById("c-" + k).textContent = fa(lanes[k].length);
+    });
+    document.getElementById("done-today").textContent = fa(data.done_today);
+    document.getElementById("requests").innerHTML = data.requests.map(r => `
+      <div class="alert-strip"><span style="font-size:1.4rem">${r.kind === "bill" ? "🧾" : r.kind === "water" ? "💧" : "🙋"}</span>
+        <span class="grow"><b>میز ${esc(fa(r.table))}</b> — ${esc(r.label)} <span class="muted small">(${fa(r.created_at)})</span></span>
+        <button class="btn btn-sm btn-primary" data-resolve="${r.id}">انجام شد</button></div>`).join("");
+
+    const ids = new Set(data.orders.filter(o => o.status === "new").map(o => "o" + o.id)
+      .concat(data.requests.map(r => "r" + r.id)));
+    if (known) {
+      let fresh = 0; ids.forEach(i => { if (!known.has(i)) fresh++; });
+      if (fresh) { document.title = "🔔 (" + fa(fresh) + ") سفارش جدید"; if (soundOn) beep(); toast(fa(fresh) + " مورد جدید رسید", "ok"); }
+    }
+    known = ids;
+  }
+
+  async function poll() {
+    if (busy || document.hidden) return;
+    const r = await api(FEED, { timeout: 8000 });
+    const dot = document.getElementById("live-dot"), txt = document.getElementById("live-text");
+    if (r.ok) {
+      failures = 0; dot.classList.remove("off"); txt.textContent = "زنده · " + fa(r.data.server_time);
+      render(r.data);
+    } else {
+      failures++; dot.classList.add("off");
+      txt.textContent = r.status === 401 || r.status === 0 && failures > 2 ? "اتصال قطع است — تلاش مجدد…" : "خطا در دریافت اطلاعات";
+      if (r.status === 401) location.reload();
+    }
+  }
+
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-act]");
+    if (b) {
+      if (b.dataset.act === "cancelled" && !confirm("این سفارش لغو شود؟")) return;
+      busy = true; b.disabled = true;
+      const fd = new FormData(); fd.append("status", b.dataset.act);
+      const r = await api(SET_STATUS(b.dataset.id), { body: fd });
+      busy = false;
+      if (!r.ok) toast(r.data.error || "خطا", "bad");
+      poll();
+    }
+    const q = e.target.closest("[data-resolve]");
+    if (q) { q.disabled = true; await api(RESOLVE(q.dataset.resolve), { body: new FormData() }); poll(); }
+  });
+
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { document.title = "سفارش‌های زنده"; poll(); } });
+  poll(); setInterval(poll, 5000);
+})();
+</script>
+{% endblock %}

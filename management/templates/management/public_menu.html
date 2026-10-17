@@ -1,412 +1,349 @@
-{% extends "home/base.html" %}
-{% load static %}
+{% extends "base.html" %}
 {% load price_tags %}
+{% block title %}منو · میز {{ table.number }} · {{ venue.name }}{% endblock %}
 
-{% block content %}
-<style>
+{% block body %}
+<header class="menu-hero">
+  <div class="container">
+    <div class="row between">
+      <span class="table-badge">میز {{ table.number|fa }}</span>
+      <span class="row">
+        <button class="btn btn-ghost btn-icon btn-sm" data-theme-toggle type="button" aria-label="پوسته" style="color:inherit"><svg class="icon"><use href="#i-moon"/></svg></button>
+        <button class="btn btn-sm" data-open-sheet="help-sheet" type="button" style="background:rgba(255,255,255,.2);color:inherit;border-color:transparent"><svg class="icon"><use href="#i-hand"/></svg>درخواست</button>
+      </span>
+    </div>
+    <h1>{{ venue.name }}</h1>
+    <p>{{ venue.tagline }}</p>
+  </div>
+</header>
 
-/* ===========================
-   PRODUCT CARD STYLES
-=========================== */
-.product-card .card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid #eee;
-}
+<div class="container menu-body">
+  {% if not accepting %}
+    <div class="notice"><svg class="icon text-warn"><use href="#i-bell"/></svg><span>در حال حاضر سفارش آنلاین فعال نیست؛ لطفاً سفارش خود را حضوری ثبت کنید.</span></div>
+  {% elif venue.notice %}
+    <div class="notice"><svg class="icon" style="color:var(--brand)"><use href="#i-bell"/></svg><span>{{ venue.notice }}</span></div>
+  {% endif %}
 
-.product-card .card-img-top {
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  background: #f6f6f6;
-}
+  <div id="active-orders"></div>
 
-.product-card .card-body {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  direction: rtl;
-  text-align: right;
-}
-
-.qty-controls { display:flex; align-items:center; gap:8px; }
-.qty-controls .btn { width:36px; height:36px; padding:0; border-radius:6px; }
-
-/* ===========================
-   FLOATING FOOTER BAR (Option B)
-=========================== */
-.cart-footer-fixed {
-  position: fixed !important;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 99999;
-
-  background: #000000 !important; /* CHANGED: Black background */
-  color: #ffffff !important; /* CHANGED: White text for the container */
-
-  border-top: none;
-  padding: 12px 0;
-
-  display: flex;
-  align-items: center;
-  box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
-}
-
-.cart-footer-fixed * {
-  color: #ffffff !important; /* CHANGED: Ensures all inner elements are white (for cart summary) */
-}
-
-.cart-footer-fixed .btn {
-  background: #28a745 !important; /* CHANGED: Green button (Bootstrap Success) */
-  border: none !important;
-  color: #ffffff !important;
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-weight: bold;
-}
-
-.cart-footer-fixed .btn:hover {
-  background: #1e7e34 !important; /* CHANGED: Darker green on hover */
-}
-
-
-.management-menu-wrapper {
-  direction: rtl;
-  text-align: right;
-  font-family: 'Vazir', 'Bnazanin', 'Poppins', sans-serif;
-}
-
-/* Price formatting + badges */
-.price-display { font-weight: bold; }
-
-/* Modal detailed items */
-.cart-item-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.cart-item-actions button { margin-left: 4px; }
-
-/* iOS tap fix */
-.cart-footer-fixed button {
-  pointer-events: auto !important;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.cart-footer-fixed .cart-summary {
-    font-size: 20px; 
-    font-weight: 600; 
-    letter-spacing: 0.5px;
-}
-
-
-/* Extra space at bottom so content not hidden under floating bar */
-body { padding-bottom: 90px; }
-
-/* --- NEW STYLE FOR OUT OF STOCK --- */
-.out-of-stock-card {
-    opacity: 0.6; /* کم‌رنگ کردن کارت */
-}
-/* --- END NEW STYLE --- */
-
-</style>
-
-
-<div class="container mt-3 management-menu-wrapper">
-
-  <h4 class="mb-3">منو - میز {{ table.number }}</h4>
-
-  <div class="my-2 p-0">
-    <ul class="nav nav-pills" id="categoryTabs">
-      <li class="nav-item"><a class="nav-link active" data-type="all" href="#">همه</a></li>
-      {% for t in types %}
-      <li class="nav-item">
-        <a class="nav-link" data-type="{{ t.code }}" href="#">{{ t.label }} ({{ t.count }})</a>
-      </li>
+  {% if popular %}
+  <section aria-labelledby="pop-h">
+    <h3 id="pop-h" class="row" style="margin:14px 0 6px"><svg class="icon" style="color:var(--brand)"><use href="#i-flame"/></svg>محبوب‌ترین‌ها</h3>
+    <div class="popular-row">
+      {% for p in popular %}
+      <div class="pop-card" data-jump="{{ p.id }}">
+        {% if p.image %}<img src="{{ p.image.url }}" alt="" loading="lazy">{% else %}<div class="im">☕</div>{% endif %}
+        <div class="t"><div class="bold small">{{ p.name }}</div><div class="price small num">{{ p.price_cents|money }}<small>تومان</small></div></div>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="cat-bar">
+    <div class="search" style="margin-bottom:8px"><svg class="icon"><use href="#i-search"/></svg>
+      <input class="input" id="q" type="search" placeholder="جستجو در منو…" autocomplete="off"></div>
+    <div class="cat-scroll" id="cats">
+      <button class="chip is-active" data-type="all" type="button">همه</button>
+      {% for t in types %}<button class="chip" data-type="{{ t.code }}" type="button">{{ t.label }} <span class="count">{{ t.count|fa }}</span></button>{% endfor %}
+    </div>
   </div>
 
-
-  <div id="products" class="row">
+  <div class="menu-grid" id="grid">
     {% for p in products %}
-    <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 product-card" data-type="{{ p.drink_type }}">
-      <div class="card {% if not p.is_available %}out-of-stock-card{% endif %}">
-        
-        {% if p.image %}
-          <img src="{{ p.image.url }}" class="card-img-top" alt="{{ p.name }}">
-        {% else %}
-          <div class="card-img-top"></div>
-        {% endif %}
-        
-        <div class="card-body">
-          <div>
-            <h5>{{ p.name }}</h5>
-            <p class="small text-muted">{{ p.specs }}</p>
-            <p>
-              {% if p.is_available %}
-                <strong class="price-display" data-price-cents="{{ p.price_cents }}"></strong>
-                <span class="small">تومان</span>
-              {% else %}
-                <span class="badge badge-danger p-2 vazir-font">ناموجود</span>
-              {% endif %}
-            </p>
-          </div>
-
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="qty-controls">
-              <button class="btn btn-outline-secondary" onclick="decreaseQty({{ p.id }})">−</button>
-              <span id="qty-{{ p.id }}">0</span>
-              <button class="btn btn-outline-primary"
-                      {% if not p.is_available %}disabled{% endif %} 
-                      onclick="addToCart({{ p.id }}, '{{ p.name|escapejs }}', {{ p.price_cents }}, {{ p.customizable|yesno:'true,false' }})">+</button>
-            </div>
-
-            {% if p.customizable %}
-            <span class="badge badge-info">قابل سفارشی‌سازی</span>
-            {% endif %}
-          </div>
-
+    <article class="dish {% if not p.is_available %}is-off{% endif %}" id="dish-{{ p.id }}" data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.price_cents }}" data-custom="{{ p.customizable|yesno:'1,0' }}" data-popular="{{ p.is_popular|yesno:'1,0' }}" data-type="{{ p.drink_type }}" data-search="{{ p.name|lower }} {{ p.specs|lower }}">
+      {% if p.image %}<img class="dish-img" src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy">{% else %}<div class="dish-img" aria-hidden="true">☕</div>{% endif %}
+      <div class="dish-body">
+        <div class="dish-name">{{ p.name }}{% if p.is_popular %}<span class="badge badge-new badge-plain">🔥</span>{% endif %}</div>
+        {% if p.specs %}<div class="dish-desc">{{ p.specs }}</div>{% endif %}
+        <div class="dish-foot">
+          {% if p.is_available %}
+            <span class="price num">{{ p.price_cents|money }}<small>تومان</small></span>
+            <span class="slot" data-slot="{{ p.id }}"></span>
+          {% else %}
+            <span class="badge badge-cancelled">ناموجود</span>
+          {% endif %}
         </div>
       </div>
-    </div>
+    </article>
+    {% empty %}
+    <div class="empty" style="grid-column:1/-1"><svg class="icon"><use href="#i-cup"/></svg><div>منو هنوز تکمیل نشده است.</div></div>
     {% endfor %}
   </div>
+  <div class="empty" id="no-results" hidden><svg class="icon"><use href="#i-search"/></svg><div>موردی پیدا نشد</div></div>
 
-
-  {# REMOVED bg-light CLASS #}
-  <div class="cart-footer-fixed"> 
-    <div class="container d-flex justify-content-between align-items-center">
-      <div class="cart-summary">
-        <span id="cart-count">0 مورد</span> • 
-        <span id="cart-total">0</span> تومان
-      </div>
-
-      <button id="order-btn" class="btn btn-primary" type="button"
-              data-toggle="modal" data-target="#checkoutModal">
-        ثبت سفارش
-      </button>
-    </div>
+  {% if venue.wifi_name %}
+  <div class="card row mt-3" style="margin-bottom:110px">
+    <span class="stat-icon"><svg class="icon"><use href="#i-wifi"/></svg></span>
+    <div class="grow"><div class="bold">وای‌فای مهمان</div><div class="small muted ltr">{{ venue.wifi_name }}{% if venue.wifi_password %} · {{ venue.wifi_password }}{% endif %}</div></div>
+    {% if venue.wifi_password %}<button class="btn btn-sm btn-icon" id="copy-wifi" aria-label="کپی رمز" data-pass="{{ venue.wifi_password }}"><svg class="icon"><use href="#i-copy"/></svg></button>{% endif %}
   </div>
-
-
-  <div class="modal fade" id="checkoutModal" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" dir="rtl">
-          
-          <div class="modal-header">
-            <h5>تکمیل سفارش</h5>
-            <button class="close" data-dismiss="modal">&times;</button>
-          </div>
-
-          <div class="modal-body">
-            <form id="checkoutForm">
-              {% csrf_token %}
-              
-              <div class="form-group mb-3">
-                <label>نام(اجباری):</label>
-                <input name="customer_name" class="form-control" required> </div>
-
-              <div class="form-group mb-3">
-                <label>شماره تماس(اجباری):</label>
-                <input name="customer_phone" class="form-control" required> </div>
-
-              <div class="form-group mb-3">
-                <label>یادداشت(اختیاری):</label>
-                <textarea name="notes" class="form-control"></textarea>
-              </div>
-              
-              <div id="checkout-summary" class="small text-muted mb-2"></div>
-              <div id="checkout-detailed"></div>
-
-              <button type="button" class="btn btn-success btn-block mt-3" onclick="placeOrder()">
-                ثبت سفارش نهایی
-              </button>
-            </form>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
+  {% else %}<div style="height:110px"></div>{% endif %}
 </div>
 
+{# ---------- cart bar ---------- #}
+{% if accepting %}
+<div class="cart-bar" id="cart-bar">
+  <span class="cnt" id="cart-count">۰</span>
+  <div><div class="small" style="opacity:.75">جمع سفارش</div><div class="bold"><span id="cart-total">۰</span> تومان</div></div>
+  <button class="btn btn-primary" data-open-sheet="cart-sheet" type="button">مشاهده سبد و ثبت</button>
+</div>
+{% endif %}
 
-<script>
-let cart = {};
+<div class="backdrop"></div>
 
-function formatPrice(cents) {
-  const r = cents;
-  if (Number.isInteger(r)) return r.toLocaleString();
-  let s = r.toFixed(2).replace(/\.?0+$/, "");
-  const parts = s.split(".");
-  parts[0] = Number(parts[0]).toLocaleString();
-  return parts.join(".");
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-  // فیلتر کردن و به‌روزرسانی قیمت‌ها (به جز محصولاتی که ناموجودند)
-  document.querySelectorAll(".price-display").forEach(el => {
-      // مطمئن می‌شویم که این عنصر درون یک تگ 'ناموجود' نباشد (در این مورد چک کردن priceCents کافی است)
-      if (el.dataset.priceCents) {
-          el.textContent = formatPrice(parseInt(el.dataset.priceCents));
-      }
-  });
-
-  document.querySelectorAll("#categoryTabs .nav-link").forEach(a => {
-    a.addEventListener("click", function(e){
-      e.preventDefault();
-      document.querySelectorAll("#categoryTabs .nav-link").forEach(n => n.classList.remove("active"));
-      this.classList.add("active");
-      const type = this.dataset.type;
-      document.querySelectorAll(".product-card").forEach(c => {
-        c.style.display = (type === "all" || c.dataset.type === type) ? "" : "none";
-      });
-    });
-  });
-});
-
-
-function addToCart(id, name, price, customizable=false) {
-  let custom = "";
-  if (customizable) {
-    // متن Prompt برای راهنمایی کاربر به‌روزرسانی شد.
-    let userInput = prompt("توضیحات (مثلاً ۷۰/۳۰). برای سرو نرمال، کادر را خالی بگذارید و تایید کنید:", "");
-    
-    // اگر کاربر دکمه "لغو" (Cancel) را بزند، userInput برابر null خواهد بود و custom همان "" می‌ماند.
-    if (userInput !== null) {
-      // اگر کاربر OK را بزند، مقدار وارد شده را تمیز (Trim) می‌کنیم. اگر خالی باشد، "" می‌شود.
-      custom = userInput.trim();
-    }
-  }
-  
-  // با این کار، اگر custom خالی باشد، محصول به عنوان یک آیتم نرمال (بدون سفارشی‌سازی) در سبد اضافه می‌شود.
-  const key = id + "::" + custom; 
-
-  if (!cart[key]) cart[key] = { id, name, qty: 0, price_cents: price, custom };
-  cart[key].qty++;
-
-  updateQtyBadges(id);
-  updateCartUI();
-}
-
-function decreaseQty(id) {
-  for (let k in cart) {
-    if (cart[k].id == id) {
-      cart[k].qty--;
-      if (cart[k].qty <= 0) delete cart[k];
-      break;
-    }
-  }
-  updateQtyBadges(id);
-  updateCartUI();
-}
-
-function updateQtyBadges(id) {
-  let total = 0;
-  for (let k in cart) if (cart[k].id == id) total += cart[k].qty;
-  document.getElementById("qty-" + id).textContent = total;
-}
-
-function updateCartUI() {
-  let count = 0, total = 0;
-
-  for (let k in cart) {
-    count += cart[k].qty;
-    total += cart[k].qty * cart[k].price_cents;
-  }
-
-  document.getElementById("cart-count").textContent = count + " مورد";
-  document.getElementById("cart-total").textContent = formatPrice(total);
-
-  let summary = "";
-  let detailed = "";
-
-  for (let k in cart) {
-    const it = cart[k];
-    summary += `${it.qty} × ${it.name}${it.custom ? " ("+it.custom+")" : ""} — ${formatPrice(it.qty*it.price_cents)} تومان<br>`;
-
-    detailed += `
-      <div class="cart-item-row">
-        <div>
-          <strong>${it.name}</strong><br>
-          ${it.custom ? `<small>${it.custom}</small><br>` : ""}
-          <small>${it.qty} × ${formatPrice(it.price_cents)} تومان</small>
-        </div>
-        <div class="cart-item-actions">
-          <button class="btn btn-outline-secondary" onclick="decreaseQty(${it.id})">−</button>
-          <button class="btn btn-outline-primary" onclick="addToCart(${it.id}, '${it.name.replace("'", "\\'")}', ${it.price_cents}, ${it.custom ? 'true' : 'false'})">+</button>
-        </div>
+{# ---------- customise sheet ---------- #}
+<section class="sheet" id="custom-sheet" aria-label="سفارشی‌سازی">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3 id="custom-title">سفارشی‌سازی</h3><button class="btn btn-ghost btn-icon btn-sm" data-close-sheet aria-label="بستن"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="sheet-body">
+    <div class="field"><label for="custom-note">توضیح (اختیاری)</label>
+      <input class="input" id="custom-note" maxlength="100" placeholder="مثلاً ۷۰/۳۰، کم‌شکر، بدون شیر">
+      <div class="fab-row" id="custom-suggest">
+        <button type="button" class="chip" data-s="۷۰/۳۰">۷۰/۳۰</button>
+        <button type="button" class="chip" data-s="کم‌شکر">کم‌شکر</button>
+        <button type="button" class="chip" data-s="بدون شکر">بدون شکر</button>
+        <button type="button" class="chip" data-s="شیر بیشتر">شیر بیشتر</button>
+        <button type="button" class="chip" data-s="خیلی داغ">خیلی داغ</button>
       </div>
-    `;
-  }
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn btn-primary btn-block btn-lg" id="custom-ok" type="button">افزودن به سبد</button></div>
+</section>
 
-  document.getElementById("checkout-summary").innerHTML = summary || "سبد خرید خالی است";
-  document.getElementById("checkout-detailed").innerHTML = detailed;
-}
+{# ---------- cart / checkout sheet ---------- #}
+<section class="sheet" id="cart-sheet" aria-label="سبد خرید">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3>سبد سفارش · میز {{ table.number|fa }}</h3><button class="btn btn-ghost btn-icon btn-sm" data-close-sheet aria-label="بستن"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="sheet-body">
+    <div id="cart-lines"></div>
+    <div class="field mt-2"><label for="f-name">نام شما</label><input class="input" id="f-name" autocomplete="name" placeholder="برای صدا زدن سفارش"></div>
+    <div class="field"><label for="f-phone">شماره تماس (اختیاری)</label><input class="input ltr" id="f-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09…"></div>
+    <div class="field"><label for="f-notes">یادداشت برای آشپزخانه (اختیاری)</label><input class="input" id="f-notes" maxlength="300"></div>
 
+    <div id="upsell-box" hidden>
+      <div class="label">🍰 کنارش بدهیم؟</div>
+      <div class="upsell" id="upsell"></div>
+    </div>
 
-function getCookie(name) {
-  let v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-  return v ? v.pop() : "";
-}
+    <div class="field"><label for="f-coupon">کد تخفیف</label>
+      <div class="row"><input class="input ltr grow" id="f-coupon" autocomplete="off" placeholder="WELCOME10" style="text-transform:uppercase">
+        <button class="btn" id="apply-coupon" type="button">اعمال</button></div>
+      <div class="help" id="coupon-msg"></div></div>
 
-function placeOrder() {
-  const items = [];
-  for (let k in cart) {
-    items.push({
-      product_id: cart[k].id,
-      quantity: cart[k].qty,
-      custom: cart[k].custom
-    });
-  }
-  if (!items.length) return alert("سبد خرید خالی است");
+    {% if tip_choices %}
+    <div class="field"><span class="label">انعام برای تیم (اختیاری)</span>
+      <div class="seg" id="tips">{% for t in tip_choices %}<button type="button" data-tip="{{ t }}" class="{% if t == 0 %}on{% endif %}">{% if t == 0 %}بدون انعام{% else %}{{ t|fa }}٪{% endif %}</button>{% endfor %}</div></div>
+    {% endif %}
 
-  // --- اعتبارسنجی اجباری بودن نام و تلفن ---
-  const customerName = document.querySelector("[name=customer_name]").value.trim();
-  const customerPhone = document.querySelector("[name=customer_phone]").value.trim();
-  
-  if (!customerName) {
-    alert("لطفاً نام خود را وارد کنید.");
-    return;
-  }
-  
-  if (!customerPhone) {
-    alert("لطفاً شماره تماس خود را وارد کنید.");
-    return;
-  }
-  // ----------------------------------------
+    <div class="field" id="pay-box">
+      <span class="label">روش پرداخت</span>
+      <label class="pay-opt"><input type="radio" name="pay" value="cash" checked><span>💵 هنگام تحویل (نقد / کارت‌خوان)</span></label>
+      {% if venue.online_payment_ready %}<label class="pay-opt"><input type="radio" name="pay" value="online"><span>💳 پرداخت آنلاین الان</span></label>{% endif %}
+    </div>
 
-  const payload = {
-    table_qr: "{{ table.qr_slug }}",
-    customer_name: customerName, 
-    customer_phone: customerPhone, 
-    notes: document.querySelector("[name=notes]").value,
-    items
-  };
-  fetch("{% url 'create_order' %}", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-    body: JSON.stringify(payload)
-  })
-  .then(r => r.json())
-  .then(data => {
-    $('#checkoutModal').modal('hide');
-    alert("سفارش ثبت شد. شماره: " + data.order_id);
-    // پس از ثبت موفق، سبد خرید را خالی کنید و UI را به‌روز کنید
-    cart = {};
-    updateCartUI();
-    document.querySelectorAll("[id^='qty-']").forEach(el => el.textContent = "0");
-  })
-  .catch(err => {
-      console.error("Error:", err);
-      alert("خطا در ثبت سفارش. لطفاً دوباره امتحان کنید.");
+    <div class="card" style="box-shadow:none;padding:14px" id="summary"></div>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn-primary btn-block btn-lg" id="place" type="button">ثبت نهایی سفارش</button>
+    <div class="help text-center" id="place-help"></div>
+  </div>
+</section>
+
+{# ---------- help sheet ---------- #}
+<section class="sheet" id="help-sheet" aria-label="درخواست از گارسون">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3>چه کمکی از ما برمی‌آید؟</h3><button class="btn btn-ghost btn-icon btn-sm" data-close-sheet aria-label="بستن"><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="sheet-body col">
+    <button class="btn btn-lg" data-svc="waiter" type="button"><svg class="icon"><use href="#i-hand"/></svg>صدا زدن گارسون</button>
+    <button class="btn btn-lg" data-svc="bill" type="button"><svg class="icon"><use href="#i-cash"/></svg>درخواست صورت‌حساب</button>
+    <button class="btn btn-lg" data-svc="water" type="button"><svg class="icon"><use href="#i-droplet"/></svg>یک لیوان آب</button>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const { $, $$, api, esc, fa, money, toast, safe, openSheet, closeSheet } = App;
+  const TABLE = "{{ table.qr_slug }}";
+  const STORE = "cart:" + TABLE, ORDERS = "orders:" + TABLE;
+  const ACCEPTING = {{ accepting|yesno:"true,false" }};
+  const items = {}, customizable = new Set();
+  $$(".dish").forEach(d => {
+    const id = +d.dataset.id;
+    items[id] = { id, name: d.dataset.name, price: +d.dataset.price, avail: !d.classList.contains("is-off"), pop: d.dataset.popular === "1" };
+    if (d.dataset.custom === "1") customizable.add(id);
   });
-}
+  let cart = [];       // [{id, qty, note}]
+  try { cart = JSON.parse(safe.get(STORE) || "[]").filter(l => items[l.id] && items[l.id].avail); } catch (e) { cart = []; }
 
+  const save = () => safe.set(STORE, JSON.stringify(cart));
+  const qtyOf = id => cart.filter(l => l.id == id).reduce((s, l) => s + l.qty, 0);
+  const total = () => cart.reduce((s, l) => s + l.qty * items[l.id].price, 0);
+  const count = () => cart.reduce((s, l) => s + l.qty, 0);
+
+  function slot(id) {
+    const q = qtyOf(id), el = document.querySelector('[data-slot="' + id + '"]');
+    if (!el || !ACCEPTING) return;
+    el.innerHTML = q
+      ? `<span class="qty"><button class="add" data-add="${id}" aria-label="افزودن">+</button><span class="n">${fa(q)}</span><button data-sub="${id}" aria-label="کم کردن">−</button></span>`
+      : `<button class="add-btn" data-add="${id}" aria-label="افزودن ${esc(items[id].name)}">${App.icon("plus")}</button>`;
+  }
+  function renderCart() {
+    Object.keys(items).forEach(slot);
+    $("#cart-count") && ($("#cart-count").textContent = fa(count()));
+    $("#cart-total") && ($("#cart-total").textContent = money(total()));
+    renderUpsell(); refreshQuote();
+    const bar = $("#cart-bar"); if (bar) bar.classList.toggle("is-show", count() > 0);
+    $("#cart-lines").innerHTML = cart.length ? cart.map((l, i) => `
+      <div class="cart-line"><div class="grow"><div class="bold">${esc(items[l.id].name)}</div>
+        ${l.note ? `<div class="small muted">↳ ${esc(l.note)}</div>` : ""}
+        <div class="small muted num">${money(items[l.id].price)} تومان</div></div>
+        <span class="qty"><button class="add" data-line-add="${i}" aria-label="افزودن">+</button><span class="n">${fa(l.qty)}</span><button data-line-sub="${i}" aria-label="کم کردن">−</button></span>
+      </div>`).join("") : `<div class="empty small">سبد خالی است</div>`;
+    $("#place").disabled = !cart.length;
+    save();
+  }
+
+  /* ---- checkout extras: coupon, tip, live server quote, upsell ---- */
+  let tip = 0, coupon = "", qTimer = null, quoteSeq = 0, lastQuote = null;
+  const payload = () => ({
+    table_qr: TABLE, coupon, tip,
+    items: cart.map(l => ({ product_id: l.id, quantity: l.qty, custom: l.note })),
+  });
+  function renderSummary(q) {
+    const row = (l, v, cls) => `<div class="sum-row"><span>${l}</span><span class="num ${cls || ""}">${v}</span></div>`;
+    let h = row("جمع اقلام", money(q.subtotal));
+    if (q.discount) h += row("تخفیف" + (coupon ? " (" + esc(coupon) + ")" : ""), "−" + money(q.discount), "neg");
+    if (q.service) h += row("حق سرویس", money(q.service));
+    if (q.tax) h += row("مالیات", money(q.tax));
+    if (q.tip) h += row("انعام", money(q.tip));
+    h += `<div class="sum-row total"><span>مبلغ قابل پرداخت</span><span class="num">${money(q.total)} تومان</span></div>`;
+    $("#summary").innerHTML = h;
+  }
+  function refreshQuote() {
+    clearTimeout(qTimer);
+    if (!cart.length) { $("#summary").innerHTML = ""; return; }
+    // instant local estimate, then the authoritative server quote
+    renderSummary({ subtotal: total(), discount: 0, service: 0, tax: 0, tip: 0, total: total() });
+    qTimer = setTimeout(async () => {
+      const seq = ++quoteSeq, r = await api("{% url 'quote' %}", { body: payload() });
+      if (seq !== quoteSeq) return;
+      if (r.ok) { lastQuote = r.data; renderSummary(r.data); $("#coupon-msg").textContent = coupon ? "کد تخفیف اعمال شد ✓" : ""; $("#coupon-msg").style.color = "var(--ok)"; }
+      else if (coupon && /کد|تخفیف/.test(r.data.error || "")) { $("#coupon-msg").textContent = r.data.error; $("#coupon-msg").style.color = "var(--bad)"; coupon = ""; refreshQuote(); }
+    }, 250);
+  }
+  function renderUpsell() {
+    const inCart = new Set(cart.map(l => l.id)), box = $("#upsell-box");
+    const picks = Object.values(items).filter(i => i.avail && i.pop && !inCart.has(i.id) && !customizable.has(i.id)).slice(0, 4);
+    box.hidden = !picks.length || !cart.length;
+    $("#upsell").innerHTML = picks.map(i => `<button type="button" data-up="${i.id}">${esc(i.name)} <span class="muted small num">+${money(i.price)}</span></button>`).join("");
+  }
+  const tipsBox = $("#tips");
+  if (tipsBox) tipsBox.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    tip = +b.dataset.tip; $$("#tips button").forEach(x => x.classList.toggle("on", x === b)); refreshQuote();
+  });
+  $("#apply-coupon").addEventListener("click", () => { coupon = $("#f-coupon").value.trim().toUpperCase(); $("#coupon-msg").textContent = coupon ? "در حال بررسی…" : ""; $("#coupon-msg").style.color = ""; refreshQuote(); });
+  document.addEventListener("click", e => { const u = e.target.closest("[data-up]"); if (u) addLine(u.dataset.up, ""); });
+
+  function addLine(id, note) {
+    const ex = cart.find(l => l.id == id && l.note === note);
+    if (ex) { if (ex.qty >= 30) return toast("حداکثر ۳۰ عدد از هر آیتم", "bad"); ex.qty++; }
+    else cart.push({ id: +id, qty: 1, note });
+    if (navigator.vibrate) navigator.vibrate(8);
+    renderCart();
+  }
+  function subLine(id) {
+    for (let i = cart.length - 1; i >= 0; i--) if (cart[i].id == id) { if (--cart[i].qty <= 0) cart.splice(i, 1); break; }
+    renderCart();
+  }
+
+  let pending = null;
+  document.addEventListener("click", e => {
+    const a = e.target.closest("[data-add]");
+    if (a) {
+      const id = a.dataset.add;
+      if (customizable.has(+id) && !qtyOf(id)) { pending = id; $("#custom-title").textContent = items[id].name; $("#custom-note").value = ""; openSheet("custom-sheet"); return; }
+      addLine(id, (cart.slice().reverse().find(l => l.id == id) || {}).note || ""); return;
+    }
+    const s = e.target.closest("[data-sub]"); if (s) { subLine(s.dataset.sub); return; }
+    const la = e.target.closest("[data-line-add]"); if (la) { const l = cart[la.dataset.lineAdd]; if (l.qty < 30) l.qty++; renderCart(); return; }
+    const ls = e.target.closest("[data-line-sub]"); if (ls) { const l = cart[ls.dataset.lineSub]; if (--l.qty <= 0) cart.splice(ls.dataset.lineSub, 1); renderCart(); return; }
+    const sg = e.target.closest("[data-s]"); if (sg) { const n = $("#custom-note"); n.value = (n.value ? n.value + "، " : "") + sg.dataset.s; return; }
+    const j = e.target.closest("[data-jump]");
+    if (j) { const d = document.getElementById("dish-" + j.dataset.jump); d && d.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+    const sv = e.target.closest("[data-svc]");
+    if (sv) { service(sv); return; }
+  });
+  $("#custom-ok").addEventListener("click", () => { addLine(pending, $("#custom-note").value.trim()); closeSheet("custom-sheet"); });
+
+  async function service(btn) {
+    btn.disabled = true;
+    const r = await api("{% url 'create_request' %}", { body: { table_qr: TABLE, kind: btn.dataset.svc } });
+    btn.disabled = false;
+    if (r.ok) { toast(r.data.new ? "درخواست شما ارسال شد ✓" : "درخواست قبلی شما در صف است", "ok"); closeSheet("help-sheet"); }
+    else toast(r.data.error || "ارسال نشد", "bad");
+  }
+
+  /* filters */
+  let type = "all", term = "";
+  function applyFilter() {
+    let shown = 0;
+    $$(".dish").forEach(d => {
+      const ok = (type === "all" || d.dataset.type === type) && (!term || d.dataset.search.includes(term));
+      d.hidden = !ok; if (ok) shown++;
+    });
+    $("#no-results").hidden = shown > 0;
+  }
+  $("#cats").addEventListener("click", e => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    $$("#cats .chip").forEach(x => x.classList.remove("is-active")); c.classList.add("is-active");
+    type = c.dataset.type; applyFilter();
+  });
+  $("#q").addEventListener("input", e => { term = e.target.value.trim().toLowerCase(); applyFilter(); });
+
+  /* place order */
+  const nameBox = $("#f-name"), phoneBox = $("#f-phone");
+  nameBox.value = safe.get("cust:name") || ""; phoneBox.value = safe.get("cust:phone") || "";
+  $("#place").addEventListener("click", async function () {
+    if (!cart.length) return;
+    this.disabled = true; this.textContent = "در حال ثبت…";
+    const payChoice = (document.querySelector("input[name=pay]:checked") || {}).value || "cash";
+    const r = await api("{% url 'create_order' %}", { body: {
+      ...payload(), payment: payChoice,
+      customer_name: nameBox.value, customer_phone: phoneBox.value, notes: $("#f-notes").value,
+    } });
+    this.textContent = "ثبت نهایی سفارش"; this.disabled = false;
+    if (!r.ok) { toast(r.data.error || "خطا در ثبت سفارش", "bad"); return; }
+    if (r.data.skipped && r.data.skipped.length) toast("این موارد موجود نبود و حذف شد: " + r.data.skipped.join("، "));
+    safe.set("cust:name", nameBox.value); safe.set("cust:phone", phoneBox.value);
+    let list = []; try { list = JSON.parse(safe.get(ORDERS) || "[]"); } catch (e) { }
+    list.unshift({ token: r.data.token, id: r.data.order_id, t: Date.now() });
+    safe.set(ORDERS, JSON.stringify(list.slice(0, 5)));
+    cart = []; coupon = ""; renderCart();
+    location.href = r.data.pay_url || ("/management/o/" + r.data.token + "/");
+  });
+
+  /* resume tracking for recent orders */
+  (async function recent() {
+    let list = []; try { list = JSON.parse(safe.get(ORDERS) || "[]"); } catch (e) { }
+    list = list.filter(o => Date.now() - o.t < 6 * 3600e3);
+    const box = $("#active-orders");
+    for (const o of list) {
+      const r = await api("/management/api/o/" + o.token + "/");
+      if (r.ok && r.data.status !== "delivered" && r.data.status !== "cancelled") {
+        box.insertAdjacentHTML("beforeend", `<a class="notice" href="/management/o/${o.token}/" style="text-decoration:none;color:inherit">
+          <span class="live-dot"></span><span class="grow">سفارش #${fa(o.id)} — <b>${esc(r.data.status_label)}</b></span><span class="btn btn-sm">پیگیری</span></a>`);
+      }
+    }
+  })();
+
+  const cw = $("#copy-wifi");
+  if (cw) cw.addEventListener("click", () => { (navigator.clipboard ? navigator.clipboard.writeText(cw.dataset.pass) : Promise.reject()).then(() => toast("رمز کپی شد", "ok"), () => toast(cw.dataset.pass)); });
+
+  renderCart();
+})();
 </script>
-
 {% endblock %}

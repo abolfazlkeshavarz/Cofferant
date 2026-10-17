@@ -1,104 +1,85 @@
-from django.shortcuts import render, redirect
-from .forms import CustomUserCreationForm, LoginForm 
-from django.contrib.auth import login, authenticate, logout
-from django.contrib import auth, messages
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from management.forms import UserImage
+from django.shortcuts import redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
+
 from management.models import Item
-# Create your views here.
+
+from .forms import CustomUserCreationForm, LoginForm
+from .models import CustomUser
+
+
+def _home_for(user):
+    return "vendor:dashboard" if user.is_staff else "profile"
+
 
 def register(request):
-    if request.method == 'POST':
+    """First-run setup: only available while no staff account exists.
+
+    The first account becomes the owner (staff + superuser). Afterwards new staff
+    are created from the Django admin, so strangers can't self-register into the panel.
+    """
+    if CustomUser.objects.filter(is_staff=True).exists():
+        messages.info(request, "ثبت‌نام عمومی غیرفعال است. برای ساخت حساب جدید با مدیر تماس بگیرید.")
+        return redirect("login")
+
+    if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
+            user.is_staff = True
+            user.is_superuser = True
+            user.save()
             login(request, user)
-            return redirect('vendor:dashboard')
+            messages.success(request, "حساب مدیر ساخته شد. به کافیرانت خوش آمدید!")
+            return redirect("vendor:dashboard")
     else:
         form = CustomUserCreationForm()
-    return render(request, 'users/register.html', {'form': form})
+    return render(request, "users/register.html", {"form": form})
+
 
 def sign_in(request):
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
-            
-            if user:
-                login(request, user)
-                messages.success(request,'Success')
-                
-                # --- اضافه کردن شرط برای هدایت بر اساس is_staff ---
-                if user.is_staff:
-                    # اگر کاربر is_staff=True بود (مدیر/فروشنده)، به پنل مدیریت برود
-                    return redirect('vendor:dashboard')
-                else:
-                    # اگر کاربر is_staff=False بود (کاربر عادی)، به صفحه پروفایل یا صفحه اصلی برود
-                    return redirect('profile') # یا redirect('home') اگر مسیر home دارید
-                # ----------------------------------------------------
-                
-            else:
-                messages.warning(request, 'Username or Password is/are Incorrect :(')
-                return redirect('login')
-            
-    else:
-        form = LoginForm()
-    return render(request, 'users/login.html', {'form':form})
+    if request.user.is_authenticated:
+        return redirect(_home_for(request.user))
+
+    form = LoginForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = authenticate(
+            request,
+            username=form.cleaned_data["username"],
+            password=form.cleaned_data["password"],
+        )
+        if user:
+            login(request, user)
+            nxt = request.POST.get("next") or request.GET.get("next")
+            if nxt and url_has_allowed_host_and_scheme(nxt, {request.get_host()}, request.is_secure()):
+                return redirect(nxt)
+            return redirect(_home_for(user))
+        form.add_error(None, "نام کاربری یا رمز عبور اشتباه است.")
+    can_setup = not CustomUser.objects.filter(is_staff=True).exists()
+    return render(request, "users/login.html", {"form": form, "can_setup": can_setup,
+                                                  "next": request.GET.get("next", "")})
+
 
 @login_required
 def profile(request):
-    return render(request, 'users/profile.html')  
+    return render(request, "users/profile.html")
 
+
+@require_POST
 def sign_out(request):
     logout(request)
-    messages.info(request, 'Logged Out!!!')
-    return redirect('home')
+    return redirect("home")
 
 
-
-@login_required
 def products_list(request):
-    """
-    نمایش لیست تمام محصولات موجود به کاربر وارد شده (فقط نمایش — بدون سبد/سفارش).
-    خروجی: types = [
-        {"code": code, "label": label, "products": queryset_of_products, "count": n},
-        ...
-    ]
-    """
-    products_qs = Item.objects.filter(is_available=True).order_by('name')
-
-    # سعی می‌کنیم چند نام رایج برای تعریف choices را پشتیبانی کنیم
-    choices = None
-    for attr in ('CHOICES', 'DRINK_TYPE_CHOICES', 'TYPE_CHOICES', 'TYPES'):
-        if hasattr(Item, attr):
-            choices = getattr(Item, attr)
-            break
-
+    """Public read-only menu (no ordering) grouped by category."""
+    products = Item.objects.filter(is_available=True)
     types = []
-    if choices:
-        for code, label in choices:
-            category_products = products_qs.filter(drink_type=code)
-            if category_products.exists():
-                types.append({
-                    "code": code,
-                    "label": label,
-                    "products": category_products,
-                    "count": category_products.count()
-                })
-
-    # اگر هیچ CHOICES وجود نداشت: fallback — گروه‌بندی بر اساس مقادیر موجود در فیلد drink_type
-    if not types:
-        # استخراج انواع واقعی از queryset
-        distinct_types = products_qs.values_list('drink_type', flat=True).distinct()
-        for dt in distinct_types:
-            category_products = products_qs.filter(drink_type=dt)
-            types.append({
-                "code": dt,
-                "label": dt if dt else "سایر",
-                "products": category_products,
-                "count": category_products.count()
-            })
-
-    return render(request, 'users/products_list.html', {'types': types})
+    for code, label in Item.CHOICES:
+        group = [p for p in products if p.drink_type == code]
+        if group:
+            types.append({"code": code, "label": label, "products": group, "count": len(group)})
+    return render(request, "users/products_list.html", {"types": types})

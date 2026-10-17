@@ -1,0 +1,50 @@
+{% extends "licensing/dev_base.html" %}
+{% load price_tags %}
+{% block content %}
+<div class="page-head">
+  <h1>مشتریان و لایسنس‌ها</h1>
+  <a class="btn btn-primary" href="{% url 'developer:create' %}"><svg class="icon"><use href="#i-plus"/></svg>مشتری جدید</a>
+</div>
+<form method="get" class="row row-wrap" style="margin-bottom:14px">
+  <div class="search grow" style="min-width:220px"><svg class="icon"><use href="#i-search"/></svg>
+    <input class="input" type="search" name="q" value="{{ q }}" placeholder="نام، زیردامنه، کلید یا تلفن"></div>
+  <select class="input" name="state" style="width:auto" onchange="this.form.submit()">
+    <option value="all">همه وضعیت‌ها</option>
+    <option value="active" {% if state == 'active' %}selected{% endif %}>فعال</option>
+    <option value="expired" {% if state == 'expired' %}selected{% endif %}>منقضی</option>
+    <option value="cancelled" {% if state == 'cancelled' %}selected{% endif %}>لغو شده</option>
+  </select>
+  <select class="input" name="mode" style="width:auto" onchange="this.form.submit()">
+    <option value="all">همه روش‌ها</option>
+    <option value="hosted" {% if mode == 'hosted' %}selected{% endif %}>روی دامنه ما</option>
+    <option value="self" {% if mode == 'self' %}selected{% endif %}>نصب مستقل</option>
+  </select>
+</form>
+<div class="card card-flush"><div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>کسب‌وکار</th><th>روش</th><th>آدرس</th><th>اشتراک</th><th>انقضا</th><th>وضعیت</th><th></th></tr></thead>
+    <tbody>
+    {% for l in page %}
+      <tr>
+        <td class="bold">{{ l.business_name }}<div class="small muted ltr">{{ l.key }}</div></td>
+        <td class="small">{{ l.get_mode_display }}</td>
+        <td class="small ltr">{{ l.hostname|default:"—" }}</td>
+        <td>{{ l.get_plan_display }}</td>
+        <td class="small num">{% if l.is_forever %}∞ دائمی{% else %}{{ l.expires_at|date:"Y/m/d"|fa }} <span class="muted">({{ l.days_left|fa }} روز)</span>{% endif %}</td>
+        <td><span class="bold state-{{ l.state }}">{% if l.state == 'active' %}● فعال{% elif l.state == 'expired' %}● منقضی{% else %}● لغو شده{% endif %}</span></td>
+        <td><a class="btn btn-sm" href="{% url 'developer:detail' l.pk %}">مدیریت</a></td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7"><div class="empty"><svg class="icon"><use href="#i-shield"/></svg><div>مشتری‌ای پیدا نشد</div></div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% if page.paginator.num_pages > 1 %}
+<div class="row center mt-2">
+  {% if page.has_previous %}<a class="btn btn-sm" href="?q={{ q }}&state={{ state }}&mode={{ mode }}&page={{ page.previous_page_number }}">قبلی</a>{% endif %}
+  <span class="muted small">صفحه {{ page.number|fa }} از {{ page.paginator.num_pages|fa }}</span>
+  {% if page.has_next %}<a class="btn btn-sm" href="?q={{ q }}&state={{ state }}&mode={{ mode }}&page={{ page.next_page_number }}">بعدی</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

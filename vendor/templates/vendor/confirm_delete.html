@@ -1,0 +1,14 @@
+{% extends "panel_base.html" %}
+{% block title %}حذف · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px;margin:40px auto;text-align:center">
+  <svg class="icon" style="width:48px;height:48px;color:var(--bad)"><use href="#i-trash"/></svg>
+  <h2 class="mt-1">حذف «{{ object }}»؟</h2>
+  <p class="muted">این کار قابل بازگشت نیست. سفارش‌های ثبت‌شده قبلی حفظ می‌شوند.</p>
+  <form method="post" class="row center">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit" style="background:var(--bad);color:#fff;border-color:var(--bad)">بله، حذف شود</button>
+    <a class="btn" href="javascript:history.back()">انصراف</a>
+  </form>
+</div>
+{% endblock %}

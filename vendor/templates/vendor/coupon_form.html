@@ -1,0 +1,27 @@
+{% extends "panel_base.html" %}
+{% block title %}کد تخفیف · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="row">
+    <a class="btn btn-ghost btn-icon" href="{% url 'vendor:coupons' %}" aria-label="بازگشت"><svg class="icon" style="transform:scaleX(-1)"><use href="#i-chevron"/></svg></a>
+    <h1>{% if object %}ویرایش کد{% else %}کد تخفیف جدید{% endif %}</h1>
+  </div>
+</div>
+<form method="post" class="card" style="max-width:560px">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="field"><label for="{{ form.code.id_for_label }}">{{ form.code.label }}</label>{{ form.code }}{{ form.code.errors }}</div>
+  <div class="grid grid-2" style="gap:12px">
+    <div class="field"><label for="{{ form.percent.id_for_label }}">{{ form.percent.label }}</label>{{ form.percent }}{{ form.percent.errors }}</div>
+    <div class="field"><label for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>{{ form.amount }}{{ form.amount.errors }}</div>
+  </div>
+  <div class="help" style="margin:-8px 0 16px">فقط یکی از دو مورد بالا را پر کنید و دیگری را صفر بگذارید.</div>
+  <div class="grid grid-2" style="gap:12px">
+    <div class="field"><label for="{{ form.min_order.id_for_label }}">{{ form.min_order.label }}</label>{{ form.min_order }}{{ form.min_order.errors }}</div>
+    <div class="field"><label for="{{ form.max_uses.id_for_label }}">{{ form.max_uses.label }}</label>{{ form.max_uses }}{{ form.max_uses.errors }}</div>
+  </div>
+  <div class="field"><label for="{{ form.expires_at.id_for_label }}">{{ form.expires_at.label }}</label>{{ form.expires_at }}{{ form.expires_at.errors }}</div>
+  <div class="check mb-2">{{ form.is_active }}<label for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label></div>
+  <button class="btn btn-primary btn-block" type="submit">ذخیره</button>
+</form>
+{% endblock %}

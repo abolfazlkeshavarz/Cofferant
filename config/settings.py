@@ -20,17 +20,61 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&&^2mydf87-rd@(ql^bc*5q7j=t1%ormep4mc+rt@q*#5)huy0'
+def _env_list(name, default=""):
+    return [v.strip() for v in os.environ.get(name, default).split(",") if v.strip()]
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-ALLOWED_HOSTS = ["192.168.1.104", "localhost", "127.0.0.1", "coffeerant.abolfazl.fun"]
+DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+
+# In production set DJANGO_SECRET_KEY; the insecure fallback only works with DEBUG on.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or (
+    "dev-only-insecure-key-change-me" if DEBUG else None
+)
+if not SECRET_KEY:
+    raise RuntimeError("DJANGO_SECRET_KEY must be set when DJANGO_DEBUG=0")
+
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,192.168.1.104,coffeerant.abolfazl.fun"
+)
+
+# ---------------------------------------------------------------------------
+# Deployment mode
+#   standalone - one venue on its own server/domain (license is verified remotely
+#                against the developer's platform when LICENSE_ENFORCE=1)
+#   platform   - the developer's own domain: every customer gets <slug>.PLATFORM_DOMAIN
+#                with an isolated database; /developer/ manages licenses
+# ---------------------------------------------------------------------------
+DEPLOYMENT_MODE = os.environ.get("DEPLOYMENT_MODE", "standalone")
+if DEPLOYMENT_MODE not in ("standalone", "platform"):
+    raise RuntimeError("DEPLOYMENT_MODE must be 'standalone' or 'platform'")
+PLATFORM_DOMAIN = os.environ.get("PLATFORM_DOMAIN", "localhost").lower()
+DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
+TENANT_DB_DIR = DATA_DIR / "tenants"
+if DEPLOYMENT_MODE == "platform":
+    ALLOWED_HOSTS += [PLATFORM_DOMAIN, "." + PLATFORM_DOMAIN]
+
+# Self-hosted customers: their key + the developer's server that vouches for it
+LICENSE_ENFORCE = os.environ.get("LICENSE_ENFORCE", "0") == "1"
+LICENSE_KEY = os.environ.get("LICENSE_KEY", "")
+LICENSE_SERVER_URL = os.environ.get("LICENSE_SERVER_URL", "").rstrip("/")
+LICENSE_GRACE_HOURS = int(os.environ.get("LICENSE_GRACE_HOURS", "72"))
+
+# Marketing page prices (toman) shown on the platform landing page / developer panel
+PLAN_PRICES = {
+    "1m": int(os.environ.get("PRICE_1M", "490000")),
+    "3m": int(os.environ.get("PRICE_3M", "1290000")),
+    "6m": int(os.environ.get("PRICE_6M", "2390000")),
+    "1y": int(os.environ.get("PRICE_1Y", "4290000")),
+    "2y": int(os.environ.get("PRICE_2Y", "7490000")),
+    "forever": int(os.environ.get("PRICE_FOREVER", "14900000")),
+}
+SALES_CONTACT = os.environ.get("SALES_CONTACT", "")
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'licensing',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,17 +85,19 @@ INSTALLED_APPS = [
     'management',
     'users',
     'vendor',
-    
-
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
+    'licensing.middleware.TenantMiddleware',  # before sessions: selects the tenant database
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'licensing.middleware.LicenseMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -60,7 +106,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -68,6 +114,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'management.context_processors.venue',
+                'licensing.context_processors.licensing',
             ],
         },
     },
@@ -79,12 +127,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.environ.get("DB_PATH") or (BASE_DIR / 'db.sqlite3'),
+        'OPTIONS': {
+            'timeout': 20,
+            'transaction_mode': 'IMMEDIATE',
+            'init_command': 'PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;',
+        },
     }
 }
+DATABASE_ROUTERS = ['licensing.routers.TenantRouter']
 
 
 # Password validation
@@ -109,9 +164,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fa'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tehran'
 
 USE_I18N = True
 
@@ -123,7 +178,9 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # This is used for collectstatic in production
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # run `manage.py collectstatic` in production
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = DEBUG
 
 
 
@@ -137,11 +194,48 @@ AUTH_USER_MODEL = 'users.CustomUser'
 MEDIA_URL = '/media/'  
   
 # Path where media is stored  
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')  
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT') or os.path.join(BASE_DIR, 'media/')  
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://coffeerant.abolfazl.fun',
-    'http://127.0.0.1:8000',
+CSRF_TRUSTED_ORIGINS = _env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "https://coffeerant.abolfazl.fun,http://127.0.0.1:8000,http://localhost:8000",
+)
+if DEPLOYMENT_MODE == "platform":
+    CSRF_TRUSTED_ORIGINS += [f"https://{PLATFORM_DOMAIN}", f"https://*.{PLATFORM_DOMAIN}"]
 
-]
+# Auth
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "vendor:dashboard"
 
+# Order throttling (per client IP) - protects the public ordering endpoint
+ORDER_RATE_LIMIT = int(os.environ.get("ORDER_RATE_LIMIT", "6"))
+ORDER_RATE_WINDOW = int(os.environ.get("ORDER_RATE_WINDOW", "300"))
+
+# File based so every gunicorn worker shares rate limits and license state
+CACHES = {"default": {
+    "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+    "LOCATION": str(DATA_DIR / "cache"),
+}}
+
+STORAGES = {
+    "default": {"BACKEND": "licensing.storage.TenantMediaStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+# Hardened defaults when running in production
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    TRUST_PROXY_HEADERS = True  # nginx sets X-Forwarded-For; used for rate limiting
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_REFERRER_POLICY = "same-origin"
+    X_FRAME_OPTIONS = "DENY"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"cofferant": {"handlers": ["console"], "level": "INFO"}},
+}

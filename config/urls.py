@@ -1,28 +1,24 @@
-"""
-URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from django.contrib import admin
-from django.urls import path, include
 from django.conf import settings
-from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path, re_path
+from django.views.generic import RedirectView
+from django.views.static import serve
+
+from licensing import views as licensing_views
+
+admin.site.site_header = "مدیریت کافیرانت"
+admin.site.site_title = "کافیرانت"
 
 urlpatterns = [
+    path('favicon.ico', RedirectView.as_view(url='/static/images/fevicon.png', permanent=True)),
+    path('healthz', licensing_views.healthz),
+    path('api/license/verify/', licensing_views.verify_api),
+    path('developer/', include('licensing.urls')),
     path('admin/', admin.site.urls),
     path('', include('home.urls')),
     path("management/", include("management.urls")),
     path("vendor/", include(("vendor.urls", "vendor"), namespace="vendor")),
-    path('users/', include('users.urls')),  
-        ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('users/', include('users.urls')),
+    # Uploaded media (menu photos). For high traffic serve MEDIA_ROOT from nginx instead.
+    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+]

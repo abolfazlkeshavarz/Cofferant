@@ -1,0 +1,26 @@
+{% extends "panel_base.html" %}
+{% load price_tags %}
+{% block title %}کدهای تخفیف · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>کدهای تخفیف</h1><div class="muted small">مشتری‌ها را با کد تخفیف به سفارش دوباره تشویق کنید.</div></div>
+  <a class="btn btn-primary" href="{% url 'vendor:coupon_add' %}"><svg class="icon"><use href="#i-plus"/></svg>کد جدید</a>
+</div>
+<div class="card card-flush">
+  {% for c in coupons %}
+  <div class="row" style="padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap">
+    <span class="table-tag ltr" style="min-width:110px">{{ c.code }}</span>
+    <div class="grow">
+      <div class="bold">{{ c.label|fa }} تخفیف{% if c.min_order %} <span class="muted small">· حداقل سفارش {{ c.min_order|money }}</span>{% endif %}</div>
+      <div class="small muted">استفاده: {{ c.used_count|fa }}{% if c.max_uses %} از {{ c.max_uses|fa }}{% endif %}{% if c.expires_at %} · تا {{ c.expires_at|date:"Y/m/d"|fa }}{% endif %}</div>
+    </div>
+    {% if c.is_active %}<span class="badge badge-ready">فعال</span>{% else %}<span class="badge badge-delivered">غیرفعال</span>{% endif %}
+    <a class="btn btn-sm btn-icon" href="{% url 'vendor:coupon_edit' c.id %}" aria-label="ویرایش"><svg class="icon"><use href="#i-edit"/></svg></a>
+    <a class="btn btn-sm btn-icon btn-danger" href="{% url 'vendor:coupon_delete' c.id %}" aria-label="حذف"><svg class="icon"><use href="#i-trash"/></svg></a>
+  </div>
+  {% empty %}
+  <div class="empty"><svg class="icon"><use href="#i-coins"/></svg><div>هنوز کد تخفیفی ندارید.</div>
+    <a class="btn btn-primary mt-2" href="{% url 'vendor:coupon_add' %}">اولین کد را بسازید</a></div>
+  {% endfor %}
+</div>
+{% endblock %}

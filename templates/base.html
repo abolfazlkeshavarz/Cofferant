@@ -1,0 +1,43 @@
+{% load static %}<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="{{ venue.accent_color }}">
+  <title>{% block title %}{{ venue.name }}{% endblock %}</title>
+  <link rel="icon" href="{% static 'images/fevicon.png' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="{% static 'app/app.css' %}?v=1">
+  <style>:root{--brand:{{ venue.accent_color }};--alt:{{ venue.secondary_color }};}</style>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+      // pick readable text colour for the brand colour
+      var h = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "{{ venue.accent_color }}";
+      var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h);
+      if (m) {
+        var l = (0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16)) / 255;
+        document.documentElement.style.setProperty("--brand-ink", l > 0.62 ? "#231a14" : "#ffffff");
+      }
+    })();
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% include "partials/icons.html" %}
+  {% if messages %}
+  <div class="messages" role="status" aria-live="polite">
+    {% for message in messages %}<div class="msg {{ message.tags }}">{{ message }}</div>{% endfor %}
+  </div>
+  {% endif %}
+  {% block body %}{% endblock %}
+  <script src="{% static 'app/app.js' %}?v=1"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

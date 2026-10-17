@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block body_class %}panel{% endblock %}
+{% block body %}
+{% with url=request.resolver_match.url_name %}
+<div class="shell">
+  <aside class="side no-print" aria-label="منوی مدیریت">
+    <a class="brand" href="{% url 'vendor:dashboard' %}">
+      <span class="brand-mark">{% if venue.logo %}<img src="{{ venue.logo.url }}" alt="">{% else %}<svg class="icon"><use href="#i-cup"/></svg>{% endif %}</span>
+      {{ venue.name }}
+    </a>
+    <a class="nav-item {% if url == 'dashboard' %}is-active{% endif %}" href="{% url 'vendor:dashboard' %}"><svg class="icon"><use href="#i-home"/></svg>داشبورد</a>
+    <a class="nav-item {% if url == 'board' %}is-active{% endif %}" href="{% url 'vendor:board' %}"><svg class="icon"><use href="#i-board"/></svg>سفارش‌های زنده
+      {% if nav_active_orders or nav_open_requests %}<span class="pill">{{ nav_active_orders|add:nav_open_requests }}</span>{% endif %}</a>
+    <a class="nav-item {% if url == 'orders' or url == 'order_detail' %}is-active{% endif %}" href="{% url 'vendor:orders' %}"><svg class="icon"><use href="#i-receipt"/></svg>تاریخچه سفارش‌ها</a>
+    <a class="nav-item {% if 'item' in url %}is-active{% endif %}" href="{% url 'vendor:items' %}"><svg class="icon"><use href="#i-cup"/></svg>منو و محصولات</a>
+    <a class="nav-item {% if 'table' in url %}is-active{% endif %}" href="{% url 'vendor:tables' %}"><svg class="icon"><use href="#i-qr"/></svg>میزها و QR</a>
+    <a class="nav-item {% if 'coupon' in url %}is-active{% endif %}" href="{% url 'vendor:coupons' %}"><svg class="icon"><use href="#i-coins"/></svg>کدهای تخفیف</a>
+    <a class="nav-item {% if url == 'settings' %}is-active{% endif %}" href="{% url 'vendor:settings' %}"><svg class="icon"><use href="#i-sliders"/></svg>تنظیمات</a>
+    <span class="spacer"></span>
+    <a class="nav-item" href="{% url 'home' %}" target="_blank" rel="noopener"><svg class="icon"><use href="#i-home"/></svg>مشاهده سایت</a>
+    <button class="nav-item" data-theme-toggle type="button"><svg class="icon"><use href="#i-moon"/></svg>پوسته تیره / روشن</button>
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+      <button class="nav-item" type="submit"><svg class="icon"><use href="#i-logout"/></svg>خروج ({{ user.get_username }})</button>
+    </form>
+  </aside>
+
+  <div>
+    <div class="mobile-top no-print">
+      <a class="brand" href="{% url 'vendor:dashboard' %}">
+        <span class="brand-mark"><svg class="icon"><use href="#i-cup"/></svg></span>{{ venue.name }}
+      </a>
+      <span class="row">
+        <button class="btn btn-ghost btn-icon btn-sm" data-theme-toggle type="button" aria-label="پوسته"><svg class="icon"><use href="#i-moon"/></svg></button>
+        <form method="post" action="{% url 'logout' %}" style="margin:0">{% csrf_token %}
+          <button class="btn btn-ghost btn-icon btn-sm" type="submit" aria-label="خروج"><svg class="icon"><use href="#i-logout"/></svg></button>
+        </form>
+      </span>
+    </div>
+    <main class="main">
+      {% if license.expiring_soon %}
+      <div class="lock-strip no-print"><svg class="icon text-warn"><use href="#i-clock"/></svg>
+        <span class="grow">اشتراک شما {{ license.days_left }} روز دیگر به پایان می‌رسد. برای جلوگیری از قطع سرویس، تمدید کنید.</span>
+        {% if venue.phone or license.business %}<span class="small muted">با پشتیبانی تماس بگیرید</span>{% endif %}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<nav class="bottom-nav no-print" aria-label="ناوبری سریع">
+  <a href="{% url 'vendor:dashboard' %}" class="{% if url == 'dashboard' %}is-active{% endif %}"><svg class="icon"><use href="#i-home"/></svg>داشبورد</a>
+  <a href="{% url 'vendor:board' %}" class="{% if url == 'board' %}is-active{% endif %}"><svg class="icon"><use href="#i-board"/></svg>زنده
+    {% if nav_active_orders or nav_open_requests %}<span class="pill">{{ nav_active_orders|add:nav_open_requests }}</span>{% endif %}</a>
+  <a href="{% url 'vendor:orders' %}" class="{% if url == 'orders' or url == 'order_detail' %}is-active{% endif %}"><svg class="icon"><use href="#i-receipt"/></svg>سفارش‌ها</a>
+  <a href="{% url 'vendor:items' %}" class="{% if 'item' in url %}is-active{% endif %}"><svg class="icon"><use href="#i-cup"/></svg>منو</a>
+  <a href="{% url 'vendor:tables' %}" class="{% if 'table' in url %}is-active{% endif %}"><svg class="icon"><use href="#i-qr"/></svg>میزها</a>
+  <a href="{% url 'vendor:settings' %}" class="{% if url == 'settings' %}is-active{% endif %}"><svg class="icon"><use href="#i-sliders"/></svg>تنظیمات</a>
+</nav>
+{% endwith %}
+<div class="backdrop"></div>
+{% endblock %}

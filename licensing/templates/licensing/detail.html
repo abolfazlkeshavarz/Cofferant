@@ -1,0 +1,94 @@
+{% extends "licensing/dev_base.html" %}
+{% load price_tags %}
+{% block content %}
+<div class="page-head">
+  <div class="row">
+    <a class="btn btn-ghost btn-icon" href="{% url 'developer:list' %}" aria-label="بازگشت"><svg class="icon" style="transform:scaleX(-1)"><use href="#i-chevron"/></svg></a>
+    <h1>{{ lic.business_name }}</h1>
+    <span class="badge badge-{% if lic.state == 'active' %}ready{% elif lic.state == 'expired' %}new{% else %}cancelled{% endif %}">{% if lic.state == 'active' %}فعال{% elif lic.state == 'expired' %}منقضی{% else %}لغو شده{% endif %}</span>
+  </div>
+  {% if lic.hostname and lic.mode == 'hosted' %}<a class="btn btn-sm ltr" href="https://{{ lic.hostname }}" target="_blank" rel="noopener">{{ lic.hostname }} ↗</a>{% endif %}
+</div>
+
+{% if creds %}
+<div class="card" style="border:2px solid var(--ok);margin-bottom:16px">
+  <div class="card-title"><h3>🔑 اطلاعات ورود مدیر مجموعه</h3><span class="badge badge-new">فقط همین یک‌بار نمایش داده می‌شود</span></div>
+  <div class="key-box">آدرس:   {{ creds.url }}/users/login/
+کاربر:  {{ creds.username }}
+رمز:    {{ creds.password }}</div>
+  <p class="muted small mt-1 mb-0">آن را برای مشتری بفرستید؛ مشتری می‌تواند رمز را از پروفایل تغییر دهد. اگر گم شد، «بازنشانی رمز» را بزنید.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="col">
+    <div class="card">
+      <div class="card-title"><h3>اشتراک</h3></div>
+      <ul class="lines small">
+        <li><span class="muted">مدل</span><b>{{ lic.get_plan_display }}</b></li>
+        <li><span class="muted">انقضا</span><b class="num">{% if lic.is_forever %}∞ دائمی{% else %}{{ lic.expires_at|date:"Y/m/d H:i"|fa }}{% if lic.state == 'active' %} ({{ lic.days_left|fa }} روز مانده){% endif %}{% endif %}</b></li>
+        <li><span class="muted">جمع دریافتی</span><b class="num">{{ lic.price_paid|money }} تومان</b></li>
+        <li><span class="muted">روش</span><b>{{ lic.get_mode_display }}</b></li>
+        <li><span class="muted">تماس</span><b>{{ lic.contact_name }} <span class="ltr">{{ lic.phone }}</span></b></li>
+        {% if lic.state == 'cancelled' and lic.cancel_reason %}<li><span class="muted">دلیل لغو</span><b>{{ lic.cancel_reason }}</b></li>{% endif %}
+      </ul>
+
+      <form method="post" action="{% url 'developer:renew' lic.pk %}" class="mt-2">{% csrf_token %}
+        <div class="grid grid-2" style="gap:12px">
+          <div class="field"><label>{{ renew_form.plan.label }}</label>{{ renew_form.plan }}</div>
+          <div class="field"><label>{{ renew_form.price.label }}</label>{{ renew_form.price }}</div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">تمدید / تغییر اشتراک</button>
+      </form>
+    </div>
+
+    <div class="card" style="border-color:color-mix(in srgb,var(--bad) 40%,var(--line))">
+      <div class="card-title"><h3>کنترل دسترسی</h3></div>
+      {% if lic.status == 'active' %}
+        <p class="muted small">با لغو اشتراک، پنل مدیریت و ثبت سفارش این مشتری <b>از همین لحظه</b> غیرفعال می‌شود (منوی مشتریان فقط نمایشی می‌ماند). اطلاعات او حذف نمی‌شود.</p>
+        <form method="post" action="{% url 'developer:cancel' lic.pk %}" class="row" onsubmit="return confirm('اشتراک این مشتری لغو شود؟ پنل او فوراً از کار می‌افتد.')">{% csrf_token %}
+          <div class="grow">{{ cancel_form.reason }}</div>
+          <button class="btn btn-danger" type="submit" style="background:var(--bad);color:#fff;border-color:var(--bad)">لغو اشتراک</button>
+        </form>
+      {% else %}
+        <p class="muted small">این اشتراک لغو شده است. با فعال‌سازی دوباره، پنل بلافاصله باز می‌شود.</p>
+        <form method="post" action="{% url 'developer:reactivate' lic.pk %}">{% csrf_token %}<button class="btn btn-ok btn-block" type="submit">فعال‌سازی دوباره</button></form>
+      {% endif %}
+      {% if lic.mode == 'hosted' %}
+        <form method="post" action="{% url 'developer:reset_owner' lic.pk %}" class="mt-1" onsubmit="return confirm('رمز مدیر این مجموعه بازنشانی شود؟')">{% csrf_token %}
+          <button class="btn btn-sm btn-block" type="submit">بازنشانی رمز مدیر مجموعه</button></form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col">
+    {% if lic.mode == 'self' %}
+    <div class="card">
+      <div class="card-title"><h3>نصب روی دامنه مشتری</h3></div>
+      <p class="muted small">این مقادیر را در فایل <span class="ltr">.env</span> سرور مشتری قرار دهید (راهنما: <span class="ltr">README → Self-hosted</span>):</p>
+      <div class="key-box">DEPLOYMENT_MODE=standalone
+LICENSE_ENFORCE=1
+LICENSE_KEY={{ lic.key }}
+LICENSE_SERVER_URL={{ server_url }}</div>
+      <p class="small muted mt-1 mb-0">آخرین بررسی توسط سرور مشتری: {% if lic.last_check_at %}<span class="num">{{ lic.last_check_at|date:"Y/m/d H:i"|fa }}</span> <span class="ltr">({{ lic.last_check_host }})</span>{% else %}هنوز انجام نشده{% endif %}</p>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="card-title"><h3>پنل روی دامنه ما</h3></div>
+      <div class="key-box">https://{{ lic.hostname }}/users/login/</div>
+      <p class="small muted mt-1 mb-0">پایگاه‌داده و تصاویر این مشتری کاملاً جدا نگهداری می‌شود.</p>
+    </div>
+    {% endif %}
+    <div class="card">
+      <div class="card-title"><h3>کلید لایسنس</h3></div>
+      <div class="key-box">{{ lic.key }}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><h3>سوابق</h3></div>
+      <ul class="lines small">
+        {% for e in events %}<li><span>{% if e.kind == 'created' %}ساخته شد{% elif e.kind == 'renewed' %}تمدید{% elif e.kind == 'cancelled' %}لغو{% elif e.kind == 'reactivated' %}فعال‌سازی دوباره{% else %}{{ e.kind }}{% endif %}{% if e.detail %} · {{ e.detail }}{% endif %}{% if e.amount %} · <b class="num">{{ e.amount|money }}</b>{% endif %}</span><span class="muted num">{{ e.created_at|date:"Y/m/d H:i"|fa }}</span></li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

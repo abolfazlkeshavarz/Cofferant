@@ -1,45 +1,13 @@
-{% extends "home/base.html" %}
-{% load static %}
-
-<body>
-   {% block content %}
-   <div class="header_section register-header">
-      <div class="container">
-         <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand" href="{% url "home" %}"><img src="{% static 'images/logo.png' %}"></a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-               aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-               <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse vazir-font" id="navbarSupportedContent">
-               <ul class="navbar-nav ml-auto">
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "home" %}">خانه</a>
-                  </li>
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "contact" %}">ارتباط با ما</a>
-                  </li>
-
-                  {% if user.is_authenticated %}
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url 'products_list' %}">محصولات</a>
-                  </li>
-                  {# ... سایر لینک‌های مربوط به پروفایل و خروج ... #}
-                  {% endif %}
-                  <li class="nav-item">
-                     <a class="nav-link text-danger" href="{% url "logout" %}">Log Out</a>
-                  </li>
-               </ul>
-            </div>
-         </nav>
-      </div>
-   </div> <!-- Close header_section here -->
-
-   <!-- Start new div for the form -->
-    <div style='padding-top:10%;'>
-   <div class="form-container vazir-font align-right">
-
-   </div>
+{% extends "site_base.html" %}
+{% block title %}پروفایل · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:520px;padding-top:48px">
+  <div class="card text-center">
+    <span class="stat-icon" style="margin:0 auto 10px;width:64px;height:64px;border-radius:20px"><svg class="icon" style="width:32px;height:32px"><use href="#i-user"/></svg></span>
+    <h2>{{ user.get_username }}</h2>
+    <p class="muted">{{ user.email|default:"ایمیلی ثبت نشده" }}</p>
+    {% if user.is_staff %}<a class="btn btn-primary btn-block" href="{% url 'vendor:dashboard' %}">پنل مدیریت</a>{% endif %}
+    <form method="post" action="{% url 'logout' %}" class="mt-1">{% csrf_token %}<button class="btn btn-block" type="submit">خروج از حساب</button></form>
+  </div>
 </div>
-   {% endblock content %}
-</body>
+{% endblock %}

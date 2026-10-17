@@ -1,0 +1,73 @@
+{% extends "site_base.html" %}
+{% load price_tags %}
+{% block title %}کافیرانت · سیستم سفارش QR و مدیریت کافه و رستوران{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="hero">
+    <div>
+      <span class="badge badge-ready badge-plain">⚡ راه‌اندازی در ۱۰ دقیقه · بدون نیاز به برنامه‌نویس</span>
+      <h1 class="mt-1">فروش کافه‌تان را بالا ببرید،<br><em>صف و اشتباه سفارش</em> را کم کنید</h1>
+      <p class="lead">منوی QR، سفارش زنده در آشپزخانه، پرداخت آنلاین، کد تخفیف و انعام — در یک پنل فارسی. روی دامنه ما شروع کنید یا روی دامنه خودتان نصب کنید.</p>
+      <div class="row row-wrap mt-2">
+        <a class="btn btn-primary btn-lg" href="#pricing">مشاهده تعرفه‌ها</a>
+        <a class="btn btn-lg" href="{% url 'contact' %}">درخواست دمو رایگان</a>
+      </div>
+      <div class="row row-wrap mt-2 muted small"><span>✓ پشتیبانی فارسی</span><span>✓ بدون کارمزد از فروش شما</span><span>✓ داده‌های شما جداست</span></div>
+    </div>
+    <div class="phone-mock" aria-hidden="true">
+      <div class="row between"><b>میز ۷</b><span class="badge badge-ready">آماده می‌شود…</span></div>
+      <div class="mock-item"><span class="mock-thumb">☕</span><div class="grow"><b>لاته</b><div class="small muted">۱۲۰٬۰۰۰ تومان</div></div><span class="badge badge-preparing badge-plain">×۲</span></div>
+      <div class="mock-item"><span class="mock-thumb">🍰</span><div class="grow"><b>چیزکیک</b><div class="small muted">۱۵۵٬۰۰۰ تومان</div></div><span class="badge badge-preparing badge-plain">×۱</span></div>
+      <div class="sum-row mt-1"><span>تخفیف WELCOME10</span><span class="neg">−۲۷٬۵۰۰</span></div>
+      <div class="sum-row"><span>انعام ۱۰٪</span><span>۲۴٬۸۰۰</span></div>
+      <div class="sum-row total"><span>مبلغ نهایی</span><span>۲۷۲٬۳۰۰ تومان</span></div>
+      <div class="btn btn-primary btn-block" style="pointer-events:none">💳 پرداخت آنلاین</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>ابزارهایی که مستقیم روی درآمد اثر می‌گذارند</h2><p>هر قابلیت برای این ساخته شده که میانگین فاکتور و سرعت چرخش میز بیشتر شود.</p></div>
+    <div class="grid grid-3">
+      <div class="card feature"><span class="stat-icon"><svg class="icon"><use href="#i-cash"/></svg></span><h3>پرداخت آنلاین زرین‌پال</h3><p class="muted mb-0">مشتری سر میز می‌پردازد؛ پول مستقیم به حساب خودتان می‌رود، بدون واسطه.</p></div>
+      <div class="card feature"><span class="stat-icon"><svg class="icon"><use href="#i-flame"/></svg></span><h3>کد تخفیف و فروش مکمل</h3><p class="muted mb-0">کد درصدی یا مبلغی بسازید و آیتم‌های محبوب را هنگام ثبت سفارش پیشنهاد دهید.</p></div>
+      <div class="card feature"><span class="stat-icon"><svg class="icon"><use href="#i-coins"/></svg></span><h3>انعام، مالیات و حق سرویس</h3><p class="muted mb-0">فاکتور دقیق و شفاف با انعام اختیاری ۵ تا ۱۵ درصد برای تیم شما.</p></div>
+      <div class="card feature"><span class="stat-icon"><svg class="icon"><use href="#i-board"/></svg></span><h3>برد زنده آشپزخانه</h3><p class="muted mb-0">سفارش‌ها با اعلان صوتی ظاهر می‌شوند؛ دیر شدن هر سفارش قرمز می‌شود.</p></div>
+      <div class="card feature"><span class="stat-icon"><svg class="icon"><use href="#i-trend"/></svg></span><h3>گزارش فروش و ساعات شلوغی</h3><p class="muted mb-0">پرفروش‌ترین‌ها، مقایسه با دیروز و نقشه حرارتی برای برنامه‌ریزی نیرو.</p></div>
+      <div class="card feature"><span class="stat-icon"><svg class="icon"><use href="#i-sliders"/></svg></span><h3>برند خودتان</h3><p class="muted mb-0">لوگو، رنگ اصلی و فرعی، اطلاعیه و وای‌فای — منو دقیقاً شبیه کافه شما.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>دو روش راه‌اندازی، یک محصول</h2></div>
+    <div class="grid grid-2">
+      <div class="card"><h3>☁️ پنل روی دامنه ما</h3><p class="muted">زیردامنه اختصاصی مثل <b class="ltr">mycafe.{{ request.get_host }}</b>. بدون سرور و بدون دغدغه؛ آپدیت‌ها و بکاپ با ماست. مناسب شروع سریع.</p></div>
+      <div class="card"><h3>🖥️ نصب روی دامنه شما</h3><p class="muted">روی سرور و دامنه خودتان نصب می‌شود (Docker، یک دستور). برند و داده‌ها کاملاً در اختیار شما؛ مناسب مجموعه‌های بزرگ‌تر.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="pricing">
+    <div class="section-head"><h2>تعرفه اشتراک</h2><p>بدون کارمزد از فروش شما. هر زمان تمدید یا ارتقا دهید.</p></div>
+    <div class="plan-grid">
+      {% for p in plans %}
+      <div class="card plan {% if p.best %}best{% endif %}">
+        {% if p.best %}<span class="ribbon">محبوب‌ترین</span>{% endif %}
+        <h3>{{ p.label }}</h3>
+        <div class="amount num">{{ p.price|money }}</div>
+        <div class="muted small">تومان{% if p.per_month and p.code != '1m' %} · ماهی {{ p.per_month|money }}{% endif %}{% if p.code == 'forever' %} · یک‌بار پرداخت{% endif %}</div>
+        <a class="btn {% if p.best %}btn-primary{% endif %} btn-block mt-2" href="{% url 'contact' %}">شروع کنید</a>
+      </div>
+      {% endfor %}
+    </div>
+    {% if sales_contact %}<p class="text-center muted mt-2">فروش و پشتیبانی: <b class="ltr">{{ sales_contact }}</b></p>{% endif %}
+  </section>
+
+  <section class="section">
+    <div class="cta-band">
+      <h2>اولین سفارش آنلاین را همین امروز بگیرید</h2>
+      <p style="opacity:.9">دمو رایگان بگیرید؛ منو و QR میزها را با هم می‌سازیم.</p>
+      <a class="btn btn-lg" href="{% url 'contact' %}">درخواست دمو</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load price_tags %}
+{% block title %}چاپ QR میزها · {{ venue.name }}{% endblock %}
+{% block body %}
+<div class="container" style="padding:24px 0">
+  <div class="row between no-print" style="margin-bottom:20px">
+    <h1 class="mb-0">برگه‌های QR میزها</h1>
+    <div class="row"><a class="btn" href="{% url 'vendor:tables' %}">بازگشت</a><button class="btn btn-primary" onclick="window.print()"><svg class="icon"><use href="#i-printer"/></svg>چاپ</button></div>
+  </div>
+  <div class="qr-grid" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+    {% for t in tables %}
+    <div class="qr-sheet">
+      <div class="bold" style="font-size:1.3rem">{{ venue.name }}</div>
+      <div style="color:#7a6d62">برای دیدن منو و ثبت سفارش اسکن کنید</div>
+      <img src="{% url 'vendor:table_qr' t.id %}" alt="QR">
+      <div class="bold" style="font-size:2rem">میز {{ t.number|fa }}</div>
+      {% if venue.wifi_name %}<div class="small ltr" style="margin-top:8px">Wi-Fi: {{ venue.wifi_name }}{% if venue.wifi_password %} · {{ venue.wifi_password }}{% endif %}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

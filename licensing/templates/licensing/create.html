@@ -1,0 +1,53 @@
+{% extends "licensing/dev_base.html" %}
+{% load price_tags %}
+{% block content %}
+<div class="page-head"><h1>مشتری جدید</h1></div>
+<form method="post" class="grid grid-2" style="align-items:start">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="card">
+    <div class="card-title"><h3>اطلاعات مشتری</h3></div>
+    <div class="field"><label for="{{ form.business_name.id_for_label }}">{{ form.business_name.label }}</label>{{ form.business_name }}{{ form.business_name.errors }}</div>
+    <div class="field"><label for="{{ form.contact_name.id_for_label }}">{{ form.contact_name.label }}</label>{{ form.contact_name }}</div>
+    <div class="grid grid-2" style="gap:12px">
+      <div class="field"><label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>{{ form.phone }}</div>
+      <div class="field"><label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>{{ form.email }}{{ form.email.errors }}</div>
+    </div>
+    <div class="field"><label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>{{ form.notes }}</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h3>روش راه‌اندازی و اشتراک</h3></div>
+    <div class="field"><label for="{{ form.mode.id_for_label }}">{{ form.mode.label }}</label>{{ form.mode }}</div>
+    <div class="field" id="f-slug"><label for="{{ form.slug.id_for_label }}">{{ form.slug.label }}</label>{{ form.slug }}{{ form.slug.errors }}
+      <div class="help ltr" id="slug-preview"></div></div>
+    <div class="field" id="f-domain"><label for="{{ form.domain.id_for_label }}">{{ form.domain.label }} (اختیاری)</label>{{ form.domain }}{{ form.domain.errors }}
+      <div class="help">برای ثبت در سوابق؛ لایسنس به کلید وابسته است و روی هر دامنه‌ای کار می‌کند.</div></div>
+    <div class="grid grid-2" style="gap:12px">
+      <div class="field"><label for="{{ form.plan.id_for_label }}">{{ form.plan.label }}</label>{{ form.plan }}</div>
+      <div class="field"><label for="{{ form.price_paid.id_for_label }}">{{ form.price_paid.label }}</label>{{ form.price_paid }}{{ form.price_paid.errors }}</div>
+    </div>
+    <button class="btn btn-primary btn-lg btn-block" type="submit">ساخت مشتری و لایسنس</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const mode = document.getElementById("{{ form.mode.id_for_label }}"), plan = document.getElementById("{{ form.plan.id_for_label }}"),
+        price = document.getElementById("{{ form.price_paid.id_for_label }}"), slug = document.getElementById("{{ form.slug.id_for_label }}"),
+        prices = {{ prices|safe }};
+  const root = "{{ request.get_host }}".replace(/^www\./, "");
+  function sync() {
+    const hosted = mode.value === "hosted";
+    document.getElementById("f-slug").hidden = !hosted;
+    document.getElementById("f-domain").hidden = hosted;
+    document.getElementById("slug-preview").textContent = slug.value ? slug.value.toLowerCase() + "." + root : "";
+  }
+  mode.addEventListener("change", sync); slug.addEventListener("input", sync);
+  plan.addEventListener("change", () => { if (prices[plan.value] !== undefined) price.value = prices[plan.value]; });
+  sync();
+})();
+</script>
+{% endblock %}

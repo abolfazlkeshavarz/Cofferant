@@ -1,62 +1,56 @@
-{% extends "vendor/base_vendor.html" %}
-{% load static %}
+{% extends "panel_base.html" %}
 {% load price_tags %}
+{% block title %}منو و محصولات · {{ venue.name }}{% endblock %}
 
-{% block vendor_content %}
-<div class="container mt-4" dir="rtl">
-  <div class="d-flex justify-content-between align-items-center">
-    <h3>لیست محصولات</h3>
-    <a class="btn btn-success" href="{% url 'vendor:item_add' %}">افزودن محصول</a>
+{% block content %}
+<div class="page-head">
+  <h1>منو و محصولات</h1>
+  <a class="btn btn-primary" href="{% url 'vendor:item_add' %}"><svg class="icon"><use href="#i-plus"/></svg>محصول جدید</a>
+</div>
+
+<form method="get" class="row row-wrap" style="margin-bottom:14px">
+  <div class="search grow"><svg class="icon"><use href="#i-search"/></svg>
+    <input class="input" type="search" name="q" value="{{ q }}" placeholder="جستجوی محصول…"></div>
+  {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+</form>
+<div class="cat-scroll" style="margin-bottom:16px">
+  <a class="chip {% if not cat %}is-active{% endif %}" href="?">همه</a>
+  {% for code, label in categories %}<a class="chip {% if cat == code %}is-active{% endif %}" href="?cat={{ code|urlencode }}">{{ label }}</a>{% endfor %}
+</div>
+
+<div class="card card-flush">
+  {% for it in items %}
+  <div class="row" style="padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap">
+    {% if it.image %}<img class="item-thumb" src="{{ it.image.url }}" alt="" loading="lazy">{% else %}<span class="item-thumb">☕</span>{% endif %}
+    <div class="grow" style="min-width:160px">
+      <div class="bold">{{ it.name }}{% if it.is_popular %} <span class="badge badge-new badge-plain">🔥 محبوب</span>{% endif %}</div>
+      <div class="small muted">{{ it.get_drink_type_display }} · <span class="num">{{ it.price_cents|money }}</span> تومان{% if it.customizable %} · سفارشی‌سازی{% endif %}</div>
+    </div>
+    <label class="row small" title="موجود / ناموجود">
+      <span class="switch"><input type="checkbox" {% if it.is_available %}checked{% endif %} data-toggle="{% url 'vendor:item_toggle' it.id %}" aria-label="موجود بودن {{ it.name }}"><span></span></span>
+      <span class="avail-label" style="min-width:52px">{% if it.is_available %}موجود{% else %}ناموجود{% endif %}</span>
+    </label>
+    <a class="btn btn-sm btn-icon" href="{% url 'vendor:item_edit' it.id %}" aria-label="ویرایش"><svg class="icon"><use href="#i-edit"/></svg></a>
+    <a class="btn btn-sm btn-icon btn-danger" href="{% url 'vendor:item_delete' it.id %}" aria-label="حذف"><svg class="icon"><use href="#i-trash"/></svg></a>
   </div>
+  {% empty %}
+  <div class="empty"><svg class="icon"><use href="#i-cup"/></svg><div>محصولی پیدا نشد.</div>
+    <a class="btn btn-primary mt-2" href="{% url 'vendor:item_add' %}">اولین محصول را اضافه کنید</a></div>
+  {% endfor %}
+</div>
+{% endblock %}
 
-  <div class="table-responsive"> <table class="table table-bordered mt-3">
-      <thead class="thead-light">
-        <tr>
-          {# ترتیب جدید ستون‌ها #}
-          <th>عملیات</th>
-          <th>نام</th>
-          <th>نوع</th>
-          <th>قیمت (تومان)</th>
-          <th>قابل سفارشی</th>
-          <th>موجودی</th>
-          <th>تصویر</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in items %}
-        {# اعمال کلاس table-danger در صورتی که item ناموجود باشد #}
-        <tr class="{% if not item.is_available %}table-danger{% endif %}"> 
-          
-          {# ۱. عملیات (ویرایش) #}
-          <td><a class="btn btn-sm btn-secondary" href="{% url 'vendor:item_edit' item.id %}">ویرایش</a></td>
-          
-          {# ۲. نام محصول (با رنگ و ضخامت متمایز) #}
-          <td><strong class="text-dark">{{ item.name }}</strong></td>
-          
-          {# ۳. نوع محصول #}
-          <td>{{ item.get_drink_type_display }}</td>
-          
-          {# ۴. قیمت #}
-          <td>{{ item.price_cents|money }}</td>
-          
-          {# ۵. قابل سفارشی #}
-          <td>{% if item.customizable %}بله{% else %}خیر{% endif %}</td>
-          
-          {# ۶. موجودی (جدید) #}
-          <td>
-              {% if item.is_available %}
-                  <span class="text-success font-weight-bold">موجود</span>
-              {% else %}
-                  <span class="text-danger font-weight-bold">ناموجود</span>
-              {% endif %}
-          </td>
-          
-          {# ۷. تصویر #}
-          <td>{% if item.image %}<img src="{{ item.image.url }}" style="height:60px">{% endif %}</td>
-          
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div> </div>
+{% block scripts %}
+<script>
+document.addEventListener("change", async (e) => {
+  const cb = e.target.closest("[data-toggle]");
+  if (!cb) return;
+  cb.disabled = true;
+  const r = await App.api(cb.dataset.toggle, { body: new FormData() });
+  cb.disabled = false;
+  if (!r.ok) { cb.checked = !cb.checked; App.toast(r.data.error || "خطا در ذخیره", "bad"); return; }
+  cb.closest("label").querySelector(".avail-label").textContent = r.data.available ? "موجود" : "ناموجود";
+  App.toast(r.data.available ? "محصول موجود شد" : "محصول ناموجود شد", "ok");
+});
+</script>
 {% endblock %}

@@ -1,0 +1,40 @@
+{% extends "licensing/dev_base.html" %}
+{% load price_tags %}
+{% block content %}
+<div class="page-head">
+  <div><h1>نمای کلی کسب‌وکار</h1><div class="muted small">مشتریان، اشتراک‌ها و درآمد شما</div></div>
+  <a class="btn btn-primary" href="{% url 'developer:create' %}"><svg class="icon"><use href="#i-plus"/></svg>مشتری جدید</a>
+</div>
+
+<div class="grid grid-4">
+  <div class="card stat"><span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-coins"/></svg></span>درآمد این ماه</span>
+    <span class="value"><span class="num">{{ stats.revenue_month|money }}</span> <span class="unit">تومان</span></span>
+    <span class="muted small">کل درآمد: {{ stats.revenue_total|money }}</span></div>
+  <div class="card stat"><span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-check"/></svg></span>اشتراک فعال</span>
+    <span class="value num">{{ stats.active|fa }}</span><span class="muted small">از {{ stats.total|fa }} مشتری</span></div>
+  <div class="card stat"><span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-clock"/></svg></span>در آستانه انقضا</span>
+    <span class="value num">{{ stats.soon|length|fa }}</span><span class="muted small">تا ۱۴ روز آینده</span></div>
+  <div class="card stat"><span class="label"><span class="stat-icon"><svg class="icon"><use href="#i-x"/></svg></span>لغو / منقضی</span>
+    <span class="value num">{{ stats.cancelled|fa }} / {{ stats.expired|fa }}</span><span class="muted small">{{ stats.hosted|fa }} روی دامنه ما · {{ stats.self|fa }} نصب مستقل</span></div>
+</div>
+
+<div class="grid split mt-2">
+  <div class="card">
+    <div class="card-title"><h3>درآمد ۶ ماه اخیر</h3></div>
+    <div class="vbars">
+      {% for b in stats.bars %}
+      <div class="vbar"><span class="cap num">{% if b.amount %}{{ b.k|fa }}{% endif %}</span>
+        <div class="bar {% if not b.amount %}zero{% endif %}" style="height:{{ b.pct }}%"></div>
+        <span class="cap">{{ b.date|date:"M" }}</span></div>
+      {% endfor %}
+    </div>
+    <div class="muted tiny mt-1">اعداد به هزار تومان.</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><h3>نیازمند تمدید</h3></div>
+    {% for l in stats.soon %}
+      <a class="todo" href="{% url 'developer:detail' l.pk %}"><span class="grow bold">{{ l.business_name }}</span><span class="badge badge-new">{{ l.days_left|fa }} روز</span></a>
+    {% empty %}<div class="empty small"><svg class="icon"><use href="#i-check"/></svg><div>همه‌چیز مرتب است</div></div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

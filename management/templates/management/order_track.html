@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load price_tags %}
+{% block title %}پیگیری سفارش {{ order.id|fa }} · {{ venue.name }}{% endblock %}
+
+{% block body %}
+<div class="container" style="max-width:560px;padding:20px 0 60px">
+  <div class="row between" style="margin-bottom:14px">
+    <a class="brand" href="{% if order.table %}{% url 'public_menu' order.table.qr_slug %}{% else %}{% url 'home' %}{% endif %}"><span class="brand-mark"><svg class="icon"><use href="#i-cup"/></svg></span>{{ venue.name }}</a>
+    <button class="btn btn-ghost btn-icon btn-sm" data-theme-toggle type="button" aria-label="پوسته"><svg class="icon"><use href="#i-moon"/></svg></button>
+  </div>
+
+  <div class="card text-center">
+    <div class="muted small">سفارش #{{ order.id|fa }} · میز {{ order.table.number|default:"—"|fa }}</div>
+    <div style="font-size:3rem;line-height:1.2" id="emoji" aria-hidden="true">🧾</div>
+    <h2 id="headline" class="mb-0">{{ order.get_status_display }}</h2>
+    <div class="muted" id="sub">&nbsp;</div>
+
+    <div class="stepper" id="stepper" aria-label="روند سفارش"></div>
+    <div id="cancelled" class="badge badge-cancelled" hidden>این سفارش لغو شد</div>
+  </div>
+
+  <div class="card mt-2">
+    <div class="card-title"><h3>اقلام سفارش</h3><span class="live-dot" id="dot" title="به‌روزرسانی خودکار"></span></div>
+    <ul class="lines">
+      {% for it in order.items.all %}
+      <li><span><b class="text-warn num">{{ it.quantity|fa }}×</b> {{ it.display_name }}{% if it.note %}<div class="small muted">↳ {{ it.note }}</div>{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+    <div style="border-top:2px solid var(--line);padding-top:10px;margin-top:6px">
+      {% if order.discount_cents or order.service_cents or order.tax_cents or order.tip_cents %}
+        <div class="sum-row"><span>جمع اقلام</span><span class="num">{{ order.subtotal_cents|money }}</span></div>
+        {% if order.discount_cents %}<div class="sum-row"><span>تخفیف {{ order.coupon_code }}</span><span class="num neg">−{{ order.discount_cents|money }}</span></div>{% endif %}
+        {% if order.service_cents %}<div class="sum-row"><span>حق سرویس</span><span class="num">{{ order.service_cents|money }}</span></div>{% endif %}
+        {% if order.tax_cents %}<div class="sum-row"><span>مالیات</span><span class="num">{{ order.tax_cents|money }}</span></div>{% endif %}
+        {% if order.tip_cents %}<div class="sum-row"><span>انعام</span><span class="num">{{ order.tip_cents|money }}</span></div>{% endif %}
+      {% endif %}
+      <div class="sum-row total"><span>مبلغ کل</span><span class="num">{{ order.total_cents|money }} تومان</span></div>
+    </div>
+    <div id="pay-area" class="mt-1">
+      <div id="paid-badge" class="badge badge-paid" {% if not order.paid %}hidden{% endif %}>✓ پرداخت شده</div>
+      <a id="pay-btn" class="btn btn-primary btn-block btn-lg" href="{% url 'pay_start' order.public_token %}" hidden>💳 پرداخت آنلاین {{ order.total_cents|money }} تومان</a>
+      <div class="help" id="pay-help">{% if not order.paid %}پرداخت هنگام تحویل سفارش هم ممکن است.{% endif %}</div>
+    </div>
+  </div>
+
+  <div class="card mt-2 text-center" id="rate-card" hidden>
+    <h3>تجربه شما چطور بود؟</h3>
+    <div class="stars" id="stars" role="radiogroup" aria-label="امتیاز">
+      {% for i in "12345" %}<button type="button" data-v="{{ i }}" aria-label="{{ i }} ستاره">★</button>{% endfor %}
+    </div>
+    <input class="input mt-1" id="fb" maxlength="300" placeholder="نظر شما (اختیاری)">
+    <button class="btn btn-primary btn-block mt-1" id="send-rate" type="button" disabled>ثبت نظر</button>
+  </div>
+  <div class="card mt-2 text-center" id="thanks" hidden>از نظر شما سپاسگزاریم 💛</div>
+
+  {% if order.table %}<a class="btn btn-block mt-2" href="{% url 'public_menu' order.table.qr_slug %}">بازگشت به منو</a>{% endif %}
+</div>
+<div class="backdrop"></div>
+{% endblock %}
+
+{% block scripts %}
+{{ payload|json_script:"init" }}
+<script>
+(function () {
+  const { $, api, fa, toast } = App;
+  const URL_ = "{% url 'order_status' order.public_token %}", RATE = "{% url 'order_rate' order.public_token %}";
+  const COPY = {
+    new: ["🧾", "سفارش شما ثبت شد", "منتظر تایید و شروع آماده‌سازی هستیم"],
+    preparing: ["👨‍🍳", "در حال آماده‌سازی", "سفارش شما در حال ساخت است"],
+    ready: ["✨", "سفارش آماده است!", "به زودی تحویل می‌گیرید"],
+    delivered: ["☕", "نوش جان!", "امیدواریم لذت ببرید"],
+    cancelled: ["🚫", "سفارش لغو شد", "برای اطلاعات بیشتر با کافه تماس بگیرید"],
+  };
+  let data = JSON.parse($("#init").textContent), timer, stars = 0, rated = data.rated;
+
+  function render() {
+    const c = COPY[data.status] || COPY.new, idx = data.steps.findIndex(s => s.code === data.status);
+    $("#emoji").textContent = c[0]; $("#headline").textContent = c[1]; $("#sub").textContent = c[2];
+    $("#stepper").hidden = data.status === "cancelled"; $("#cancelled").hidden = data.status !== "cancelled";
+    $("#stepper").innerHTML = data.steps.map((s, i) =>
+      `<div class="step ${i <= idx ? "is-done" : ""} ${i === idx ? "is-now" : ""}"><i>${i < idx ? "✓" : fa(i + 1)}</i>${s.label}</div>`).join("");
+    $("#pay-btn").hidden = !data.payable;
+    $("#paid-badge").hidden = !data.paid;
+    if (data.paid) $("#pay-help").textContent = "";
+    const done = data.status === "delivered";
+    $("#rate-card").hidden = !(done && !rated);
+    $("#thanks").hidden = !(done && rated);
+    if (done || data.status === "cancelled") { clearInterval(timer); $("#dot").classList.add("off"); }
+  }
+  async function poll() {
+    if (document.hidden) return;
+    const r = await api(URL_);
+    if (r.ok) { const prev = data.status; data = r.data; rated = rated || data.rated; render(); if (prev !== data.status && data.status === "ready") { toast("سفارش شما آماده است ✨", "ok"); if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } }
+  }
+  document.getElementById("stars").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    stars = +b.dataset.v;
+    document.querySelectorAll("#stars button").forEach(x => x.classList.toggle("on", +x.dataset.v <= stars));
+    $("#send-rate").disabled = false;
+  });
+  $("#send-rate").addEventListener("click", async () => {
+    const r = await api(RATE, { body: { rating: stars, feedback: $("#fb").value } });
+    if (r.ok) { rated = true; render(); } else toast(r.data.error || "ثبت نشد", "bad");
+  });
+  render(); timer = setInterval(poll, 6000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+})();
+</script>
+{% endblock %}

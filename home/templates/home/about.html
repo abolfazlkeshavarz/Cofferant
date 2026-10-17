@@ -1,40 +1,12 @@
-{% extends "home/base.html" %}
-{% load static %}
-
-<body>
-   {% block content %}
-   <div class="header_section register-header">
-      <div class="container" style="background-color:bb3f3f;">
-         <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand" href="{% url "home" %}"><img src="{% static 'images/logo.png' %}"></a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
-               aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-               <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse vazir-font" id="navbarSupportedContent">
-               <ul class="navbar-nav ml-auto">
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "home" %}">خانه</a>
-                  </li>
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "about" %}">درباره ما</a>
-                  </li>
-                  <li class="nav-item">
-                     <a class="nav-link" href="coffees.html">محصولات</a>
-                  </li>
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "contact" %}">ارتباط با ما</a>
-                  </li>
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "register" %}">ثبت نام</a>
-                  </li>
-                  <li class="nav-item">
-                     <a class="nav-link" href="{% url "login" %}">ورود</a>
-                  </li>
-               </ul>
-            </div>
-         </nav>
-      </div>
-   </div>
-   {% endblock content %}
-</body>
+{% extends "site_base.html" %}
+{% block title %}درباره ما · {{ venue.name }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:760px;padding-top:48px">
+  <h1>درباره {{ venue.name }}</h1>
+  <p class="lead muted">{{ venue.tagline|default:"ما باور داریم سفارش دادن باید به اندازه نوشیدن یک فنجان قهوه ساده باشد." }}</p>
+  <div class="card mt-2">
+    <p>کافیرانت یک پلتفرم ایرانی برای مدیریت کافه و رستوران است. هدف ما کم کردن زمان انتظار مشتری و فشار کار از روی دوش کارکنان است: منوی دیجیتال، سفارش از پشت میز، نمایش زنده سفارش‌ها در آشپزخانه و گزارش‌های ساده برای مدیر.</p>
+    <p class="mb-0">اگر صاحب کافه یا رستوران هستید و می‌خواهید سیستم را برای مجموعه خود راه‌اندازی کنید، از صفحه تماس با ما در ارتباط باشید.</p>
+  </div>
+</div>
+{% endblock %}

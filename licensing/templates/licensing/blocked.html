@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}سرویس غیرفعال است{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth-card text-center">
+    <div class="card">
+      <div style="font-size:3rem">🔒</div>
+      <h2>پنل مدیریت غیرفعال است</h2>
+      <p class="muted">{{ state.message|default:"اشتراک این مجموعه فعال نیست." }}</p>
+      <p class="small muted">برای فعال‌سازی دوباره، با ارائه‌دهنده سرویس تماس بگیرید. اطلاعات شما نگهداری می‌شود و پس از تمدید، همه‌چیز همان‌طور که بود بازمی‌گردد.</p>
+      <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-block" type="submit">خروج از حساب</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}
