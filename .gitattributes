@@ -1,0 +1,9 @@
+# Shell scripts and the container entrypoint must keep LF endings, or they fail inside Linux containers.
+*.sh text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf
+*.template text eol=lf
+*.py text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf

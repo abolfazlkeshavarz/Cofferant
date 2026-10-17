@@ -22,3 +22,17 @@ staticfiles/
 # IDE
 .vscode/
 .idea/
+
+# Virtualenvs
+winenv/
+.venv/
+
+# Uploaded media / local data
+media/
+*.sqlite3
+
+# Local tooling / deployment artefacts
+backups/
+dist/
+data/
+staticfiles/
