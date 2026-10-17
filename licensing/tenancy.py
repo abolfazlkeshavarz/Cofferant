@@ -103,3 +103,27 @@ def close_tenant_connection(slug):
             connections[alias].close()
         except Exception:  # pragma: no cover
             pass
+
+
+def drop_tenant(slug):
+    """Permanently remove a hosted customer's database file and uploaded photos."""
+    import shutil
+    from pathlib import Path
+
+    if not valid_slug(slug):
+        raise ValueError(f"invalid tenant slug: {slug!r}")
+    alias = alias_for(slug)
+    if alias in connections.settings:
+        try:
+            connections[alias].close()
+        except Exception:  # pragma: no cover
+            pass
+        try:
+            del connections[alias]
+        except Exception:  # pragma: no cover
+            pass
+        connections.settings.pop(alias, None)
+    base = db_path(slug)
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        Path(str(base) + suffix).unlink(missing_ok=True)
+    shutil.rmtree(Path(settings.MEDIA_ROOT) / slug, ignore_errors=True)

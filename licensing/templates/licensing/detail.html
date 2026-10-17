@@ -5,7 +5,7 @@
   <div class="row">
     <a class="btn btn-ghost btn-icon" href="{% url 'developer:list' %}" aria-label="بازگشت"><svg class="icon" style="transform:scaleX(-1)"><use href="#i-chevron"/></svg></a>
     <h1>{{ lic.business_name }}</h1>
-    <span class="badge badge-{% if lic.state == 'active' %}ready{% elif lic.state == 'expired' %}new{% else %}cancelled{% endif %}">{% if lic.state == 'active' %}فعال{% elif lic.state == 'expired' %}منقضی{% else %}لغو شده{% endif %}</span>
+    <span class="badge badge-{% if lic.state == 'active' %}ready{% elif lic.state == 'expired' %}new{% else %}cancelled{% endif %}">{% if lic.state == 'active' %}فعال{% elif lic.state == 'expired' %}منقضی{% elif lic.state == 'deleted' %}در سطل زباله{% else %}لغو شده{% endif %}</span>
   </div>
   {% if lic.hostname and lic.mode == 'hosted' %}<a class="btn btn-sm ltr" href="https://{{ lic.hostname }}" target="_blank" rel="noopener">{{ lic.hostname }} ↗</a>{% endif %}
 </div>
@@ -54,9 +54,36 @@
         <p class="muted small">این اشتراک لغو شده است. با فعال‌سازی دوباره، پنل بلافاصله باز می‌شود.</p>
         <form method="post" action="{% url 'developer:reactivate' lic.pk %}">{% csrf_token %}<button class="btn btn-ok btn-block" type="submit">فعال‌سازی دوباره</button></form>
       {% endif %}
-      {% if lic.mode == 'hosted' %}
-        <form method="post" action="{% url 'developer:reset_owner' lic.pk %}" class="mt-1" onsubmit="return confirm('رمز مدیر این مجموعه بازنشانی شود؟')">{% csrf_token %}
-          <button class="btn btn-sm btn-block" type="submit">بازنشانی رمز مدیر مجموعه</button></form>
+    </div>
+
+    {% if lic.mode == 'hosted' and not lic.in_trash %}
+    <div class="card">
+      <div class="card-title"><h3>🔐 رمز ورود مدیر مجموعه</h3></div>
+      <p class="muted small">نام کاربری: <b class="ltr">{{ lic.owner_username }}</b>. رمز دلخواه را بنویسید و ذخیره کنید؛ یا خالی بگذارید تا یک رمز تصادفی ساخته شود.</p>
+      <form method="post" action="{% url 'developer:set_password' lic.pk %}" class="row" autocomplete="off">{% csrf_token %}
+        <div class="grow">{{ password_form.password }}</div>
+        <button class="btn btn-primary" type="submit">تعیین رمز</button>
+      </form>
+      <div class="help">حداقل ۸ نویسه. رمز جدید فقط یک‌بار روی صفحه نمایش داده می‌شود تا برای مشتری بفرستید.</div>
+    </div>
+    {% endif %}
+
+    <div class="card" style="border-color:color-mix(in srgb,var(--bad) 40%,var(--line))">
+      <div class="card-title"><h3>🗑️ حذف</h3></div>
+      {% if not lic.in_trash %}
+        <p class="muted small">مشتری به سطل زباله می‌رود؛ پنل و منویش از دسترس خارج می‌شود اما اطلاعاتش حفظ می‌ماند و هر زمان می‌توانید برگردانید.</p>
+        <form method="post" action="{% url 'developer:trash' lic.pk %}" onsubmit="return confirm('این مشتری به سطل زباله منتقل شود؟')">{% csrf_token %}
+          <button class="btn btn-block" type="submit">انتقال به سطل زباله</button></form>
+      {% else %}
+        <p class="muted small">این مشتری در سطل زباله است و پنل و منویش غیرفعال است.</p>
+        <form method="post" action="{% url 'developer:restore' lic.pk %}">{% csrf_token %}
+          <button class="btn btn-ok btn-block" type="submit">بازگرداندن از سطل زباله</button></form>
+        <hr style="border:0;border-top:1px dashed var(--line);margin:16px 0">
+        <p class="small"><b class="text-bad">حذف نهایی</b> پایگاه‌داده، تصاویر و لایسنس این مشتری را برای همیشه پاک می‌کند و قابل بازگشت نیست (فقط از فایل پشتیبان).</p>
+        <form method="post" action="{% url 'developer:purge' lic.pk %}" onsubmit="return confirm('حذف نهایی غیرقابل بازگشت است. ادامه می‌دهید؟')">{% csrf_token %}
+          <div class="field"><label>{{ purge_form.confirm.label }}: <b>{{ lic.business_name }}</b></label>{{ purge_form.confirm }}</div>
+          <button class="btn btn-danger btn-block" type="submit" style="background:var(--bad);color:#fff;border-color:var(--bad)">حذف نهایی برای همیشه</button>
+        </form>
       {% endif %}
     </div>
   </div>

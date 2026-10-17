@@ -2,18 +2,29 @@
 {% load price_tags %}
 {% block content %}
 <div class="page-head">
-  <h1>مشتریان و لایسنس‌ها</h1>
-  <a class="btn btn-primary" href="{% url 'developer:create' %}"><svg class="icon"><use href="#i-plus"/></svg>مشتری جدید</a>
+  <h1>{% if trash %}🗑️ سطل زباله{% else %}مشتریان و لایسنس‌ها{% endif %}</h1>
+  <div class="row">
+    {% if trash %}
+      <a class="btn" href="{% url 'developer:list' %}">← بازگشت به مشتریان</a>
+    {% else %}
+      <a class="btn" href="{% url 'developer:list' %}?trash=1"><svg class="icon"><use href="#i-trash"/></svg>سطل زباله{% if trash_count %} ({{ trash_count|fa }}){% endif %}</a>
+      <a class="btn btn-primary" href="{% url 'developer:create' %}"><svg class="icon"><use href="#i-plus"/></svg>مشتری جدید</a>
+    {% endif %}
+  </div>
 </div>
+{% if trash %}<p class="muted small">مشتریان حذف‌شده اینجا می‌مانند. پنل و منوی آن‌ها از دسترس خارج است. می‌توانید برگردانید یا برای همیشه پاک کنید.</p>{% endif %}
 <form method="get" class="row row-wrap" style="margin-bottom:14px">
+  {% if trash %}<input type="hidden" name="trash" value="1">{% endif %}
   <div class="search grow" style="min-width:220px"><svg class="icon"><use href="#i-search"/></svg>
     <input class="input" type="search" name="q" value="{{ q }}" placeholder="نام، زیردامنه، کلید یا تلفن"></div>
+  {% if not trash %}
   <select class="input" name="state" style="width:auto" onchange="this.form.submit()">
     <option value="all">همه وضعیت‌ها</option>
     <option value="active" {% if state == 'active' %}selected{% endif %}>فعال</option>
     <option value="expired" {% if state == 'expired' %}selected{% endif %}>منقضی</option>
     <option value="cancelled" {% if state == 'cancelled' %}selected{% endif %}>لغو شده</option>
   </select>
+  {% endif %}
   <select class="input" name="mode" style="width:auto" onchange="this.form.submit()">
     <option value="all">همه روش‌ها</option>
     <option value="hosted" {% if mode == 'hosted' %}selected{% endif %}>روی دامنه ما</option>
@@ -31,20 +42,20 @@
         <td class="small ltr">{{ l.hostname|default:"—" }}</td>
         <td>{{ l.get_plan_display }}</td>
         <td class="small num">{% if l.is_forever %}∞ دائمی{% else %}{{ l.expires_at|date:"Y/m/d"|fa }} <span class="muted">({{ l.days_left|fa }} روز)</span>{% endif %}</td>
-        <td><span class="bold state-{{ l.state }}">{% if l.state == 'active' %}● فعال{% elif l.state == 'expired' %}● منقضی{% else %}● لغو شده{% endif %}</span></td>
-        <td><a class="btn btn-sm" href="{% url 'developer:detail' l.pk %}">مدیریت</a></td>
+        <td><span class="bold state-{{ l.state }}">{% if l.state == 'active' %}● فعال{% elif l.state == 'expired' %}● منقضی{% elif l.state == 'deleted' %}● حذف‌شده{% else %}● لغو شده{% endif %}</span></td>
+        <td><a class="btn btn-sm" href="{% url 'developer:detail' l.pk %}">{% if trash %}مشاهده{% else %}مدیریت{% endif %}</a></td>
       </tr>
     {% empty %}
-      <tr><td colspan="7"><div class="empty"><svg class="icon"><use href="#i-shield"/></svg><div>مشتری‌ای پیدا نشد</div></div></td></tr>
+      <tr><td colspan="7"><div class="empty"><svg class="icon"><use href="#i-shield"/></svg><div>{% if trash %}سطل زباله خالی است{% else %}مشتری‌ای پیدا نشد{% endif %}</div></div></td></tr>
     {% endfor %}
     </tbody>
   </table>
 </div></div>
 {% if page.paginator.num_pages > 1 %}
 <div class="row center mt-2">
-  {% if page.has_previous %}<a class="btn btn-sm" href="?q={{ q }}&state={{ state }}&mode={{ mode }}&page={{ page.previous_page_number }}">قبلی</a>{% endif %}
+  {% if page.has_previous %}<a class="btn btn-sm" href="?q={{ q }}&state={{ state }}&mode={{ mode }}{% if trash %}&trash=1{% endif %}&page={{ page.previous_page_number }}">قبلی</a>{% endif %}
   <span class="muted small">صفحه {{ page.number|fa }} از {{ page.paginator.num_pages|fa }}</span>
-  {% if page.has_next %}<a class="btn btn-sm" href="?q={{ q }}&state={{ state }}&mode={{ mode }}&page={{ page.next_page_number }}">بعدی</a>{% endif %}
+  {% if page.has_next %}<a class="btn btn-sm" href="?q={{ q }}&state={{ state }}&mode={{ mode }}{% if trash %}&trash=1{% endif %}&page={{ page.next_page_number }}">بعدی</a>{% endif %}
 </div>
 {% endif %}
 {% endblock %}

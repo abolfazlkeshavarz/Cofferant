@@ -36,7 +36,31 @@ services:
     volumes:
       - data:/app/data      # main database, every hosted customer's database, shared cache
       - media:/app/media    # uploaded photos (per customer sub-folders in platform mode)
+      - backups:/app/backups # where the developer panel lists / downloads backups from
+
+  # Automatic backups: every BACKUP_INTERVAL_HOURS (12) a consistent copy of the main database,
+  # every hosted customer's database and all photos is written to the "backups" volume.
+  backup:
+    image: cofferant-app:${VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      - app
+    entrypoint: ["python", "manage.py", "backup_loop"]
+    healthcheck:
+      disable: true   # runs no web server, so the image's HTTP check doesn't apply
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env - run make env}"
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-standalone}
+      BACKUP_DIR: /app/backups
+      BACKUP_KEEP: ${BACKUP_KEEP:-28}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-12}
+    volumes:
+      - data:/app/data
+      - media:/app/media
+      - backups:/app/backups
 
 volumes:
   data:
   media:
+  backups:

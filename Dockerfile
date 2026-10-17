@@ -7,7 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_DEBUG=0 \
     DATA_DIR=/app/data \
     DB_PATH=/app/data/db.sqlite3 \
-    MEDIA_ROOT=/app/media
+    MEDIA_ROOT=/app/media \
+    BACKUP_DIR=/app/backups
 
 WORKDIR /app
 
@@ -17,9 +18,9 @@ RUN pip install -r requirements.txt
 COPY . .
 
 RUN useradd -m -u 10001 app \
-    && mkdir -p /app/data /app/media /app/staticfiles \
+    && mkdir -p /app/data /app/media /app/staticfiles /app/backups \
     && chmod +x /app/docker/entrypoint.sh \
-    && chown -R app:app /app/data /app/media /app/staticfiles
+    && chown -R app:app /app/data /app/media /app/staticfiles /app/backups
 USER app
 
 EXPOSE 8000

@@ -27,6 +27,8 @@ class TenantMiddleware:
                 slug = host[: -len(root) - 1]
                 if not tenancy.valid_slug(slug) or not tenancy.tenant_db_exists(slug):
                     return render(request, "licensing/unknown_tenant.html", {"slug": slug}, status=404)
+                if checker.hosted_state(slug).status in ("deleted", "unknown"):
+                    return render(request, "licensing/unknown_tenant.html", {"slug": slug}, status=404)
                 tenancy.register_tenant_db(slug)
                 request.tenant = slug
         token = tenancy.current_tenant.set(slug)

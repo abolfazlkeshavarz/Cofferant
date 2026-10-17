@@ -286,3 +286,162 @@ class PlatformTenancyTests(unittest.TestCase):
         r = self.client.get(reverse("developer:dashboard"), HTTP_HOST="example.test")
         self.assertEqual(r.context["stats"]["revenue_month"], 1000000)
         self.assertEqual(r.context["stats"]["active"], 1)
+
+    # ------------------------------------------------------------------ passwords
+    def test_developer_chooses_vendor_username_and_password(self):
+        self.client.force_login(self.dev)
+        r = self.client.post(reverse("developer:create"), {
+            "business_name": "کافه رمزدار", "mode": "hosted", "slug": "alpha", "plan": "1m", "price_paid": 0,
+            "owner_username": "mina", "owner_password": "Chosen-Pass-77"}, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 302)
+        c = Client()
+        r = c.post(reverse("login"), {"username": "mina", "password": "Chosen-Pass-77"}, HTTP_HOST=self.host("alpha"))
+        self.assertEqual((r.status_code, r["Location"]), (302, reverse("vendor:dashboard")))
+
+    def test_developer_can_change_vendor_password_later(self):
+        lic, creds = self.create("alpha", "کافه آلفا")
+        r = self.client.post(reverse("developer:set_password", args=[lic.pk]), {"password": "Brand-New-Pass-9"}, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(self.client.session["flash_creds"]["password"], "Brand-New-Pass-9")
+        old = Client().post(reverse("login"), {"username": "owner", "password": creds["password"]}, HTTP_HOST=self.host("alpha"))
+        self.assertEqual(old.status_code, 200)  # old password no longer works
+        new = Client().post(reverse("login"), {"username": "owner", "password": "Brand-New-Pass-9"}, HTTP_HOST=self.host("alpha"))
+        self.assertEqual(new.status_code, 302)
+
+    def test_short_password_rejected(self):
+        lic, creds = self.create("alpha", "کافه آلفا")
+        self.client.post(reverse("developer:set_password", args=[lic.pk]), {"password": "short"}, HTTP_HOST="example.test")
+        ok = Client().post(reverse("login"), {"username": "owner", "password": creds["password"]}, HTTP_HOST=self.host("alpha"))
+        self.assertEqual(ok.status_code, 302)  # unchanged
+
+    # ------------------------------------------------------------------ trash / purge
+    def test_trash_restore_and_purge(self):
+        lic, creds = self.create("alpha", "کافه آلفا")
+        db_file = tenancy.db_path("alpha")
+        self.assertTrue(db_file.exists())
+
+        self.client.post(reverse("developer:trash", args=[lic.pk]), HTTP_HOST="example.test")
+        lic.refresh_from_db()
+        self.assertTrue(lic.in_trash)
+        self.assertEqual(Client().get("/", HTTP_HOST=self.host("alpha")).status_code, 404)  # site gone while trashed
+        self.assertNotIn(lic, list(self.client.get(reverse("developer:list"), HTTP_HOST="example.test").context["page"]))
+        self.assertIn(lic, list(self.client.get(reverse("developer:list") + "?trash=1", HTTP_HOST="example.test").context["page"]))
+
+        # purge is refused until the business name is typed exactly
+        self.client.post(reverse("developer:purge", args=[lic.pk]), {"confirm": "wrong"}, HTTP_HOST="example.test")
+        self.assertTrue(License.objects.filter(pk=lic.pk).exists())
+        self.assertTrue(db_file.exists())
+
+        self.client.post(reverse("developer:restore", args=[lic.pk]), HTTP_HOST="example.test")
+        cache.clear()
+        self.assertEqual(Client().get("/", HTTP_HOST=self.host("alpha")).status_code, 200)
+
+        # purge only works from the trash
+        self.client.post(reverse("developer:purge", args=[lic.pk]), {"confirm": lic.business_name}, HTTP_HOST="example.test")
+        self.assertTrue(License.objects.filter(pk=lic.pk).exists())
+
+        self.client.post(reverse("developer:trash", args=[lic.pk]), HTTP_HOST="example.test")
+        self.client.post(reverse("developer:purge", args=[lic.pk]), {"confirm": lic.business_name}, HTTP_HOST="example.test")
+        self.assertFalse(License.objects.filter(pk=lic.pk).exists())
+        self.assertFalse(db_file.exists())
+
+    def test_trashed_customer_cannot_be_edited_or_renewed(self):
+        lic, _ = self.create("alpha", "کافه آلفا")
+        self.client.post(reverse("developer:trash", args=[lic.pk]), HTTP_HOST="example.test")
+        r = self.client.post(reverse("developer:renew", args=[lic.pk]), {"plan": "1y", "price": 5}, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 404)
+
+    def test_self_hosted_trashed_license_stops_verifying(self):
+        self.client.force_login(self.dev)
+        lic = make_license()
+        url = "/api/license/verify/"
+        ok = self.client.post(url, json.dumps({"key": lic.key}), content_type="application/json", HTTP_HOST="example.test").json()
+        self.assertTrue(ok["valid"])
+        self.client.post(reverse("developer:trash", args=[lic.pk]), HTTP_HOST="example.test")
+        gone = self.client.post(url, json.dumps({"key": lic.key}), content_type="application/json", HTTP_HOST="example.test").json()
+        self.assertFalse(gone["valid"])
+        self.assertEqual(gone["status"], "deleted")
+
+    # ------------------------------------------------------------------ prices
+    def test_developer_edits_prices_and_they_apply_everywhere(self):
+        self.client.force_login(self.dev)
+        form = {"1m": 111000, "3m": 222000, "6m": 333000, "1y": 444000, "2y": 555000, "forever": 999000}
+        r = self.client.post(reverse("developer:prices"), form, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 302)
+        landing = self.client.get("/", HTTP_HOST="example.test")
+        prices = {p["code"]: p["price"] for p in landing.context["plans"]}
+        self.assertEqual(prices["1y"], 444000)
+        self.assertEqual(prices["forever"], 999000)
+        create = self.client.get(reverse("developer:create"), HTTP_HOST="example.test")
+        self.assertEqual(create.context["form"].initial["price_paid"], 111000)
+
+    def test_invalid_prices_rejected(self):
+        self.client.force_login(self.dev)
+        r = self.client.post(reverse("developer:prices"), {"1m": -5, "3m": "x"}, HTTP_HOST="example.test")
+        self.assertEqual(r.status_code, 200)
+
+    # ------------------------------------------------------------------ backups
+    def test_backup_contains_every_database_and_photos(self):
+        import sqlite3
+        import tarfile
+        import time
+        from . import backup
+        self.create("alpha", "کافه آلفا")
+        self.create("beta", "کافه بتا")
+        out = self.tmp / "bk"
+        media = self.tmp / "media"
+        (media / "alpha" / "images").mkdir(parents=True)
+        (media / "alpha" / "images" / "a.png").write_bytes(b"png")
+        with override_settings(BACKUP_DIR=str(out), MEDIA_ROOT=str(media), BACKUP_KEEP=2):
+            path, count = backup.create_backup()
+            self.assertGreaterEqual(count, 2)  # both customers (the in-memory test main DB has no file to copy)
+            extract = self.tmp / "extract"
+            with tarfile.open(path) as tar:
+                names = tar.getnames()
+                self.assertIn("data/tenants/alpha.sqlite3", names)
+                self.assertIn("data/tenants/beta.sqlite3", names)
+                self.assertIn("media/alpha/images/a.png", names)
+                tar.extractall(extract, filter="data")
+            con = sqlite3.connect(str(extract / "data" / "tenants" / "alpha.sqlite3"))
+            try:
+                self.assertEqual(con.execute("select name from management_venue").fetchone()[0], "کافه آلفا")
+                self.assertEqual(con.execute("pragma integrity_check").fetchone()[0], "ok")
+            finally:
+                con.close()
+            for _ in range(3):  # retention keeps only BACKUP_KEEP archives
+                time.sleep(1.1)
+                backup.create_backup()
+            self.assertEqual(len(backup.list_backups()), 2)
+        for d in (out, media, self.tmp / "extract"):
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_backup_pages_download_and_traversal_guard(self):
+        out = self.tmp / "bk2"
+        with override_settings(BACKUP_DIR=str(out)):
+            self.client.force_login(self.dev)
+            r = self.client.post(reverse("developer:backup_now"), HTTP_HOST="example.test")
+            self.assertEqual(r.status_code, 302)
+            page = self.client.get(reverse("developer:backups"), HTTP_HOST="example.test")
+            self.assertEqual(len(page.context["items"]), 1)
+            name = page.context["items"][0]["name"]
+            dl = self.client.get(reverse("developer:backup_download", args=[name]), HTTP_HOST="example.test")
+            self.assertEqual(dl.status_code, 200)
+            dl.close()
+            self.assertEqual(self.client.get("/developer/backups/..%2Fsecret/", HTTP_HOST="example.test").status_code, 404)
+            self.assertEqual(self.client.get(reverse("developer:backup_download", args=["evil.txt"]), HTTP_HOST="example.test").status_code, 404)
+            staff = User.objects.create_user("st2", password="pw-12345-x", is_staff=True)
+            c = Client()
+            c.force_login(staff)
+            self.assertEqual(c.get(reverse("developer:backups"), HTTP_HOST="example.test").status_code, 302)
+        shutil.rmtree(out, ignore_errors=True)
+
+    # ------------------------------------------------------------------ login flow
+    def test_developer_lands_on_developer_panel_after_login(self):
+        r = Client().post(reverse("login"), {"username": "dev", "password": "dev-pass-12345"}, HTTP_HOST="example.test")
+        self.assertEqual((r.status_code, r["Location"]), (302, reverse("developer:dashboard")))
+
+    def test_vendor_sidebar_links_to_developer_panel_for_superuser(self):
+        self.client.force_login(self.dev)
+        html = self.client.get(reverse("vendor:dashboard"), HTTP_HOST="example.test").content.decode()
+        self.assertIn(reverse("developer:dashboard"), html)
+

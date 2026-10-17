@@ -37,4 +37,16 @@
     {% empty %}<div class="empty small"><svg class="icon"><use href="#i-check"/></svg><div>همه‌چیز مرتب است</div></div>{% endfor %}
   </div>
 </div>
+
+<div class="grid grid-2 mt-2">
+  <div class="card">
+    <div class="card-title"><h3>💾 پشتیبان‌گیری خودکار</h3><a class="btn btn-sm" href="{% url 'developer:backups' %}">مشاهده</a></div>
+    {% if backups %}<p class="mb-0">آخرین پشتیبان: <b class="num">{{ backups.0.mtime|date:"Y/m/d H:i"|fa }}</b></p>
+    {% else %}<p class="mb-0 text-warn">هنوز پشتیبانی ساخته نشده است. اگر سرویس «backup» اجرا نیست، <span class="ltr">make up</span> را دوباره بزنید.</p>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-title"><h3>🗑️ سطل زباله</h3><a class="btn btn-sm" href="{% url 'developer:list' %}?trash=1">مشاهده</a></div>
+    <p class="mb-0">{{ stats.trash|fa }} مشتری در سطل زباله</p>
+  </div>
+</div>
 {% endblock %}

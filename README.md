@@ -20,6 +20,10 @@ subscription licenses and can cancel a customer's panel at any moment.
 
 **For you, the developer / seller**
 - `/developer/` panel: create customers, issue licenses (**1 month · 3 · 6 months · 1 · 2 years · forever**), renew, **cancel / reactivate**, see revenue and who is about to expire.
+- Choose each vendor's **username and password** (or let the system generate one) and change it any time.
+- **Edit subscription prices** in the panel; they feed the sales page and the new-customer form.
+- **Trash**: delete a customer to the trash (their site and panel go offline, data is kept), restore any time, or purge permanently after typing the business name.
+- **Automatic backups every 12 hours** of every database, every hosted customer and all photos; browse and download them in the panel.
 - Cancelling takes effect within seconds: the vendor panel and ordering stop working (the public menu stays visible but read-only). Data is kept; reactivating restores everything.
 
 ## Two ways to sell it
@@ -61,7 +65,9 @@ source code, so this is a commercial control, not unbreakable DRM — pair it wi
 | `make deploy-check` | pre-flight: secrets, tests, migrations, repo hygiene |
 | `make deploy-health HOST=https://…` | post-deploy smoke checks |
 | `make images-bundle` → `make load-images` | build on your PC, ship to a tiny VPS |
-| `make backup` / `make restore FILE=…` | all databases + photos |
+| `make backup` | take a backup now and copy it to `backups/` |
+| `make backups-list` | automatic backups kept on the server (every 12 h, last 28) |
+| `make restore FILE=…` / `make restore-latest` | restore a backup — checks the archive first, then replaces all data |
 | `make admin-password` | rotate the admin password |
 | `make demo` | demo menu, tables and orders |
 
@@ -87,7 +93,8 @@ See `.env.example`. Key variables: `DEPLOYMENT_MODE`, `PLATFORM_DOMAIN`, `DJANGO
   rate-limited ordering/quote/verify endpoints, unguessable tracking and payment links, payment callbacks bound to the issued authority.
 - Tenant databases are separate files; the router sends every non-licensing model to the request's tenant, so customers can't see each other's data.
 - Production (`DJANGO_DEBUG=0`) requires `DJANGO_SECRET_KEY`, sets secure cookies and HSTS.
-- Back up `data/` and `media/` (`make backup`). SQLite suits single-server deployments; move to PostgreSQL if you outgrow one machine.
+- A `backup` container snapshots all databases (using SQLite's online-backup, safe while serving traffic) and photos every `BACKUP_INTERVAL_HOURS` (default 12), keeping `BACKUP_KEEP` archives (default 28 = 14 days) on the server. Server-side backups don't protect against losing the server itself, so download one now and then from `/developer/backups/` or run `make backup` from your PC.
+- SQLite suits single-server deployments; move to PostgreSQL if you outgrow one machine.
 
 ## Tests
 ```bash

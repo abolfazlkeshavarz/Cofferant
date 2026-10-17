@@ -54,6 +54,9 @@ class License(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancel_reason = models.CharField(max_length=200, blank=True)
 
+    owner_username = models.CharField("نام کاربری مدیر مجموعه", max_length=150, default="owner")
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)  # set = in the trash
+
     created_at = models.DateTimeField(auto_now_add=True)
     last_check_at = models.DateTimeField(null=True, blank=True)
     last_check_host = models.CharField(max_length=200, blank=True)
@@ -66,7 +69,13 @@ class License(models.Model):
 
     # ---- state ----
     @property
+    def in_trash(self):
+        return self.deleted_at is not None
+
+    @property
     def state(self):
+        if self.deleted_at is not None:
+            return "deleted"
         if self.status == self.CANCELLED:
             return "cancelled"
         if self.expires_at is not None and self.expires_at <= timezone.now():
@@ -129,6 +138,16 @@ class License(models.Model):
         self.save(update_fields=["status", "cancelled_at", "cancel_reason"])
         self.log("cancelled", reason)
 
+    def move_to_trash(self):
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at"])
+        self.log("trashed", "به سطل زباله منتقل شد")
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=["deleted_at"])
+        self.log("restored", "از سطل زباله برگشت")
+
     def reactivate(self):
         self.status = self.ACTIVE
         self.cancelled_at = None
@@ -146,3 +165,12 @@ class LicenseEvent(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+
+
+class PlanPrice(models.Model):
+    """Subscription prices the developer edits in the panel (toman). Missing rows fall back to settings."""
+    code = models.CharField(max_length=10, unique=True, choices=PLAN_CHOICES)
+    price = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.code}: {self.price}"

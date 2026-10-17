@@ -1,0 +1,14 @@
+{% extends "licensing/dev_base.html" %}
+{% load price_tags %}
+{% block content %}
+<div class="page-head"><div><h1>قیمت اشتراک‌ها</h1><div class="muted small">قیمت‌ها به تومان هستند و در صفحه فروش و فرم «مشتری جدید» نمایش داده می‌شوند.</div></div></div>
+<form method="post" class="card" style="max-width:560px">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  {% for f in form %}
+    <div class="field"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{{ f.errors }}</div>
+  {% endfor %}
+  <button class="btn btn-primary btn-lg btn-block" type="submit">ذخیره قیمت‌ها</button>
+</form>
+<p class="muted small mt-2">تغییر قیمت روی اشتراک‌هایی که قبلاً فروخته‌اید اثری ندارد؛ فقط فروش‌های بعدی را تغییر می‌دهد.</p>
+{% endblock %}

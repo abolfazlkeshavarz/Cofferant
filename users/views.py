@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -11,7 +12,11 @@ from .forms import CustomUserCreationForm, LoginForm
 from .models import CustomUser
 
 
-def _home_for(user):
+def _home_for(user, request=None):
+    """Where to send someone after signing in. The developer lands on the developer panel."""
+    if (request is not None and user.is_superuser and settings.DEPLOYMENT_MODE == "platform"
+            and not getattr(request, "tenant", None)):
+        return "developer:dashboard"
     return "vendor:dashboard" if user.is_staff else "profile"
 
 
@@ -42,7 +47,7 @@ def register(request):
 
 def sign_in(request):
     if request.user.is_authenticated:
-        return redirect(_home_for(request.user))
+        return redirect(_home_for(request.user, request))
 
     form = LoginForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -56,7 +61,7 @@ def sign_in(request):
             nxt = request.POST.get("next") or request.GET.get("next")
             if nxt and url_has_allowed_host_and_scheme(nxt, {request.get_host()}, request.is_secure()):
                 return redirect(nxt)
-            return redirect(_home_for(user))
+            return redirect(_home_for(user, request))
         form.add_error(None, "نام کاربری یا رمز عبور اشتباه است.")
     can_setup = not CustomUser.objects.filter(is_staff=True).exists()
     return render(request, "users/login.html", {"form": form, "can_setup": can_setup,

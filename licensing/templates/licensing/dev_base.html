@@ -2,14 +2,17 @@
 {% load price_tags %}
 {% block title %}پنل توسعه‌دهنده · {{ venue.name }}{% endblock %}
 {% block body %}
+{% with name=request.resolver_match.url_name %}
 <header class="topnav">
   <div class="container">
     <a class="brand" href="{% url 'developer:dashboard' %}"><span class="brand-mark"><svg class="icon"><use href="#i-shield"/></svg></span>پنل توسعه‌دهنده</a>
-    <nav class="navlinks">
-      <a href="{% url 'developer:dashboard' %}" {% if request.resolver_match.url_name == 'dashboard' %}class="is-active"{% endif %}>نمای کلی</a>
-      <a href="{% url 'developer:list' %}" {% if request.resolver_match.url_name in 'list detail' %}class="is-active"{% endif %}>مشتریان و لایسنس‌ها</a>
-      <a href="{% url 'developer:create' %}" {% if request.resolver_match.url_name == 'create' %}class="is-active"{% endif %}>مشتری جدید</a>
-      <a href="{% url 'vendor:settings' %}">برند و تماس پلتفرم</a>
+    <nav class="navlinks" aria-label="ناوبری">
+      <a href="{% url 'developer:dashboard' %}" {% if name == 'dashboard' %}class="is-active"{% endif %}>نمای کلی</a>
+      <a href="{% url 'developer:list' %}" {% if name == 'list' or name == 'detail' %}class="is-active"{% endif %}>مشتریان</a>
+      <a href="{% url 'developer:create' %}" {% if name == 'create' %}class="is-active"{% endif %}>مشتری جدید</a>
+      <a href="{% url 'developer:prices' %}" {% if name == 'prices' %}class="is-active"{% endif %}>قیمت اشتراک‌ها</a>
+      <a href="{% url 'developer:backups' %}" {% if name == 'backups' %}class="is-active"{% endif %}>پشتیبان‌ها</a>
+      <a href="{% url 'vendor:dashboard' %}">پنل کافه من</a>
     </nav>
     <span class="grow"></span>
     <button class="btn btn-ghost btn-icon btn-sm" data-theme-toggle type="button" aria-label="پوسته"><svg class="icon"><use href="#i-moon"/></svg></button>
@@ -17,10 +20,13 @@
   </div>
 </header>
 <nav class="container cat-scroll dev-mobile" aria-label="ناوبری">
-  <a class="chip {% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'developer:dashboard' %}">نمای کلی</a>
-  <a class="chip {% if request.resolver_match.url_name == 'list' or request.resolver_match.url_name == 'detail' %}is-active{% endif %}" href="{% url 'developer:list' %}">مشتریان</a>
-  <a class="chip {% if request.resolver_match.url_name == 'create' %}is-active{% endif %}" href="{% url 'developer:create' %}">+ مشتری جدید</a>
-  <a class="chip" href="{% url 'vendor:settings' %}">برند پلتفرم</a>
+  <a class="chip {% if name == 'dashboard' %}is-active{% endif %}" href="{% url 'developer:dashboard' %}">نمای کلی</a>
+  <a class="chip {% if name == 'list' or name == 'detail' %}is-active{% endif %}" href="{% url 'developer:list' %}">مشتریان</a>
+  <a class="chip {% if name == 'create' %}is-active{% endif %}" href="{% url 'developer:create' %}">+ مشتری جدید</a>
+  <a class="chip {% if name == 'prices' %}is-active{% endif %}" href="{% url 'developer:prices' %}">قیمت‌ها</a>
+  <a class="chip {% if name == 'backups' %}is-active{% endif %}" href="{% url 'developer:backups' %}">پشتیبان‌ها</a>
+  <a class="chip" href="{% url 'vendor:dashboard' %}">پنل کافه من</a>
 </nav>
+{% endwith %}
 <main class="container" style="padding:28px 0 60px">{% block content %}{% endblock %}</main>
 {% endblock %}

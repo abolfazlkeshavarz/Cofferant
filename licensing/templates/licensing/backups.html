@@ -1,0 +1,23 @@
+{% extends "licensing/dev_base.html" %}
+{% load price_tags %}
+{% block content %}
+<div class="page-head">
+  <div><h1>پشتیبان‌ها</h1><div class="muted small">پشتیبان خودکار هر {{ interval|floatformat:"-1"|fa }} ساعت از همه کافه‌ها و تصاویر؛ آخرین {{ keep|fa }} نسخه نگهداری می‌شود.</div></div>
+  <form method="post" action="{% url 'developer:backup_now' %}">{% csrf_token %}
+    <button class="btn btn-primary" type="submit"><svg class="icon"><use href="#i-download"/></svg>همین حالا پشتیبان بگیر</button></form>
+</div>
+<div class="card card-flush"><div class="table-wrap">
+  <table class="table">
+    <thead><tr><th>فایل</th><th>زمان</th><th>حجم</th><th></th></tr></thead>
+    <tbody>
+    {% for b in items %}
+      <tr><td class="ltr small">{{ b.name }}</td><td class="num small">{{ b.mtime|date:"Y/m/d H:i"|fa }}</td><td class="num small">{{ b.human|fa }}</td>
+        <td><a class="btn btn-sm" href="{% url 'developer:backup_download' b.name %}">دانلود</a></td></tr>
+    {% empty %}
+      <tr><td colspan="4"><div class="empty"><svg class="icon"><use href="#i-download"/></svg><div>هنوز پشتیبانی ساخته نشده؛ اولین پشتیبان خودکار چند دقیقه پس از روشن شدن سرویس ساخته می‌شود.</div></div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+<p class="muted small mt-2">برای امنیت بیشتر، گهگاه یک نسخه را روی سیستم خودتان دانلود کنید تا اگر سرور از بین رفت، اطلاعات مشتریان از دست نرود.</p>
+{% endblock %}

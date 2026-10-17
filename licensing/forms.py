@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 
 from .models import PLAN_CHOICES, License
@@ -10,7 +12,7 @@ class LicenseCreateForm(forms.ModelForm):
     class Meta:
         model = License
         fields = ["business_name", "contact_name", "phone", "email", "mode", "slug", "domain",
-                  "plan", "price_paid", "notes"]
+                  "owner_username", "plan", "price_paid", "notes"]
         widgets = {
             "business_name": forms.TextInput(attrs=INPUT),
             "contact_name": forms.TextInput(attrs=INPUT),
@@ -19,10 +21,27 @@ class LicenseCreateForm(forms.ModelForm):
             "mode": forms.Select(attrs=INPUT),
             "slug": forms.TextInput(attrs={**INPUT, "dir": "ltr", "placeholder": "mycafe"}),
             "domain": forms.TextInput(attrs={**INPUT, "dir": "ltr", "placeholder": "menu.mycafe.com"}),
+            "owner_username": forms.TextInput(attrs={**INPUT, "dir": "ltr"}),
             "plan": forms.Select(attrs=INPUT),
             "price_paid": forms.NumberInput(attrs={**INPUT, "min": 0}),
             "notes": forms.Textarea(attrs={**INPUT, "rows": 3}),
         }
+
+    owner_password = forms.CharField(
+        label="رمز ورود مدیر مجموعه", required=False, min_length=8, max_length=64,
+        widget=forms.TextInput(attrs={**INPUT, "dir": "ltr", "autocomplete": "off", "placeholder": "خالی = ساخت خودکار"}),
+        help_text="حداقل ۸ نویسه. اگر خالی بگذارید، یک رمز تصادفی ساخته می‌شود.",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["owner_username"].required = False  # blank = "owner"
+
+    def clean_owner_username(self):
+        name = (self.cleaned_data.get("owner_username") or "owner").strip()
+        if not re.match(r"^[\w.@+-]{3,150}$", name):
+            raise forms.ValidationError("نام کاربری باید ۳ تا ۱۵۰ نویسه و بدون فاصله باشد.")
+        return name
 
     def clean(self):
         data = super().clean()
@@ -45,3 +64,26 @@ class RenewForm(forms.Form):
 
 class CancelForm(forms.Form):
     reason = forms.CharField(label="دلیل (اختیاری)", required=False, max_length=200, widget=forms.TextInput(attrs=INPUT))
+
+
+class OwnerPasswordForm(forms.Form):
+    password = forms.CharField(
+        label="رمز جدید", min_length=8, max_length=64,
+        widget=forms.TextInput(attrs={**INPUT, "dir": "ltr", "autocomplete": "off"}),
+    )
+
+
+class PurgeForm(forms.Form):
+    confirm = forms.CharField(label="نام کسب‌وکار را برای تایید بنویسید", max_length=120,
+                              widget=forms.TextInput(attrs=INPUT))
+
+
+class PricesForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        initial = kwargs.pop("prices", {})
+        super().__init__(*args, **kwargs)
+        for code, label in PLAN_CHOICES:
+            self.fields[code] = forms.IntegerField(
+                label=label, min_value=0, max_value=10**10, initial=initial.get(code, 0),
+                widget=forms.NumberInput(attrs={**INPUT, "inputmode": "numeric"}),
+            )

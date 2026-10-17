@@ -59,6 +59,11 @@ LICENSE_KEY = os.environ.get("LICENSE_KEY", "")
 LICENSE_SERVER_URL = os.environ.get("LICENSE_SERVER_URL", "").rstrip("/")
 LICENSE_GRACE_HOURS = int(os.environ.get("LICENSE_GRACE_HOURS", "72"))
 
+# Automatic backups (see the "backup" service in docker-compose.yml)
+BACKUP_DIR = os.environ.get("BACKUP_DIR") or str(BASE_DIR / "backups")
+BACKUP_KEEP = int(os.environ.get("BACKUP_KEEP", "28"))                    # 28 x 12h = 14 days
+BACKUP_INTERVAL_HOURS = float(os.environ.get("BACKUP_INTERVAL_HOURS", "12"))
+
 # Marketing page prices (toman) shown on the platform landing page / developer panel
 PLAN_PRICES = {
     "1m": int(os.environ.get("PRICE_1M", "490000")),

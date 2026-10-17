@@ -17,13 +17,13 @@ class Venue(models.Model):
     accent_color = models.CharField(
         "رنگ اصلی",
         max_length=7,
-        default="#b4642b",
+        default="#E8553E",
         validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "رنگ باید به شکل #RRGGBB باشد")],
     )
     secondary_color = models.CharField(
         "رنگ فرعی",
         max_length=7,
-        default="#2f5d50",
+        default="#0F9D8A",
         validators=[RegexValidator(r"^#[0-9a-fA-F]{6}$", "رنگ باید به شکل #RRGGBB باشد")],
     )
     logo = models.ImageField("لوگو", upload_to="branding", blank=True)

@@ -23,6 +23,13 @@
       <div class="help ltr" id="slug-preview"></div></div>
     <div class="field" id="f-domain"><label for="{{ form.domain.id_for_label }}">{{ form.domain.label }} (اختیاری)</label>{{ form.domain }}{{ form.domain.errors }}
       <div class="help">برای ثبت در سوابق؛ لایسنس به کلید وابسته است و روی هر دامنه‌ای کار می‌کند.</div></div>
+    <div id="f-owner">
+      <div class="grid grid-2" style="gap:12px">
+        <div class="field"><label for="{{ form.owner_username.id_for_label }}">{{ form.owner_username.label }}</label>{{ form.owner_username }}{{ form.owner_username.errors }}</div>
+        <div class="field"><label for="{{ form.owner_password.id_for_label }}">{{ form.owner_password.label }}</label>{{ form.owner_password }}{{ form.owner_password.errors }}</div>
+      </div>
+      <div class="help" style="margin:-8px 0 14px">{{ form.owner_password.help_text }}</div>
+    </div>
     <div class="grid grid-2" style="gap:12px">
       <div class="field"><label for="{{ form.plan.id_for_label }}">{{ form.plan.label }}</label>{{ form.plan }}</div>
       <div class="field"><label for="{{ form.price_paid.id_for_label }}">{{ form.price_paid.label }}</label>{{ form.price_paid }}{{ form.price_paid.errors }}</div>
@@ -43,6 +50,7 @@
     const hosted = mode.value === "hosted";
     document.getElementById("f-slug").hidden = !hosted;
     document.getElementById("f-domain").hidden = hosted;
+    document.getElementById("f-owner").hidden = !hosted;
     document.getElementById("slug-preview").textContent = slug.value ? slug.value.toLowerCase() + "." + root : "";
   }
   mode.addEventListener("change", sync); slug.addEventListener("input", sync);

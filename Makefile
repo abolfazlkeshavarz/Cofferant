@@ -77,7 +77,7 @@ ADMIN = PROD="$(PROD)" bash scripts/admin.sh
 .PHONY: help env up up-prebuilt down restart logs ps clean update \
         images images-bundle load-images bootstrap ssl \
         install migrate run demo test check \
-        backup restore shell \
+        backup backups-list restore restore-latest shell \
         admin-user admin-password migrate-tenants \
         health deploy-check deploy-health
 
@@ -186,18 +186,28 @@ admin-password: ## Rotate the admin/developer password in .env and restart. [PAS
 migrate-tenants: ## Apply migrations to every hosted customer's database (the container does this on start)
 	@$(ADMIN) migrate_tenants
 
-backup: ## Timestamped backup of ALL data (databases, customers, photos) into backups/
+backup: ## Take a backup right now (all databases, customers and photos) and copy it to backups/
 	@mkdir -p backups
-	@ts=$$(date +%Y%m%d-%H%M%S); \
-	$(COMPOSE) exec -T app tar -C /app -czf - data media > backups/cofferant-$$ts.tar.gz; \
-	echo "Wrote backups/cofferant-$$ts.tar.gz"
+	@f=$$($(COMPOSE) exec -T app python manage.py backup | tail -1 | awk '{print $$1}' | sed 's|.*/||'); 	test -n "$$f" || { echo "Backup failed"; exit 1; }; 	$(COMPOSE) exec -T app sh -c "cat backups/$$f" > "backups/$$f"; 	test -s "backups/$$f" || { rm -f "backups/$$f"; echo "Copy failed"; exit 1; }; 	echo "Saved backups/$$f"
 
-restore: ## Restore from FILE=backups/....tar.gz into the running app (replaces current data)
+backups-list: ## List the automatic backups kept on the server (every 12 hours)
+	@$(COMPOSE) exec -T app sh -c "ls -lh backups"
+
+restore: ## Restore FILE=backups/cofferant-....tar.gz — REPLACES all current data
 	@test -f "$(FILE)" || { echo "FILE is required: make restore FILE=backups/cofferant-....tar.gz"; exit 1; }
+	@tar tzf "$(FILE)" >/dev/null 2>&1 || { echo "$(FILE) is not a valid backup archive"; exit 1; }
 	@read -r -p "This REPLACES all current data with the backup. Type 'yes': " a; [ "$$a" = "yes" ] || { echo "Cancelled."; exit 1; }
-	@$(COMPOSE) exec -T app tar -C /app -xzf - < "$(FILE)"
-	@$(COMPOSE) restart app
+	$(COMPOSE) stop app backup
+	$(COMPOSE) run --rm --no-deps -T --entrypoint sh app docker/restore.sh < "$(FILE)"
+	$(COMPOSE) up -d
 	@echo "Restored from $(FILE)"
+
+restore-latest: ## Restore the newest automatic backup kept on the server — REPLACES all current data
+	@read -r -p "This REPLACES all current data with the newest server backup. Type 'yes': " a; [ "$$a" = "yes" ] || { echo "Cancelled."; exit 1; }
+	$(COMPOSE) stop app backup
+	$(COMPOSE) run --rm --no-deps -T --entrypoint sh app docker/restore.sh latest
+	$(COMPOSE) up -d
+	@echo "Restored the newest server backup"
 
 # ----------------------------------------------------------------- quality
 health: ## Check the running stack
