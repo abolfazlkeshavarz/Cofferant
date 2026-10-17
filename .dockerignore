@@ -1,0 +1,12 @@
+.git
+.venv
+winenv
+__pycache__
+*.pyc
+data
+media
+staticfiles
+db.sqlite3
+.env
+dist
+backups

@@ -1,0 +1,42 @@
+# Cofferant — one command deployment:  docker compose up -d --build
+# HTTPS is terminated by the host's nginx (see scripts/deploy-host-nginx.sh); the app speaks plain HTTP
+# on a loopback port so several projects can share one server.
+name: cofferant
+
+services:
+  app:
+    build: .
+    image: cofferant-app:${VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env - run make env}"
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-standalone}
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:-localhost}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      LICENSE_ENFORCE: ${LICENSE_ENFORCE:-0}
+      LICENSE_KEY: ${LICENSE_KEY:-}
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-}
+      LICENSE_GRACE_HOURS: ${LICENSE_GRACE_HOURS:-72}
+      SALES_CONTACT: ${SALES_CONTACT:-}
+      PRICE_1M: ${PRICE_1M:-490000}
+      PRICE_3M: ${PRICE_3M:-1290000}
+      PRICE_6M: ${PRICE_6M:-2390000}
+      PRICE_1Y: ${PRICE_1Y:-4290000}
+      PRICE_2Y: ${PRICE_2Y:-7490000}
+      PRICE_FOREVER: ${PRICE_FOREVER:-14900000}
+      ORDER_RATE_LIMIT: ${ORDER_RATE_LIMIT:-6}
+      WEB_WORKERS: ${WEB_WORKERS:-2}
+      WEB_THREADS: ${WEB_THREADS:-4}
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8081}:8000"
+    volumes:
+      - data:/app/data      # main database, every hosted customer's database, shared cache
+      - media:/app/media    # uploaded photos (per customer sub-folders in platform mode)
+
+volumes:
+  data:
+  media:
