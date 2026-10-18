@@ -49,6 +49,9 @@ echo "==> Saved the previous settings to $backup"
 
 apply_domain_env .env "$NEW" "$MODE" "$OLD" "$((1 - DROP))"
 echo "==> Updated .env"
+# IMPORTANT: load_env exported the OLD values into this process, and docker compose lets the environment
+# override .env. Reload so the restart below sees the NEW domain, not the old one.
+load_env .env
 
 if [[ "${SKIP_TLS:-0}" == "1" ]]; then
   echo "SKIP_TLS=1: not restarting or touching nginx."

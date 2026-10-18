@@ -25,6 +25,7 @@ REMOTE="${1:-${BACKUP_REMOTE:-}}"
 
 set_env_value .env BACKUP_REMOTE "$REMOTE"
 [[ -n "${PORT_SSH:-}" ]] && set_env_value .env BACKUP_REMOTE_PORT "$PORT_SSH"
+load_env .env   # docker compose lets the environment override .env, so re-read the edited file first
 echo "==> Saved BACKUP_REMOTE=$REMOTE; restarting the services"
 "$DOCKER" compose up -d
 
