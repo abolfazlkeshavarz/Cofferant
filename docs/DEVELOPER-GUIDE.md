@@ -27,6 +27,7 @@ real DNS or real certificates are marked ⚠️ *server-only*.
 14. [Troubleshooting](#14-troubleshooting)
 15. [Danger zone](#15-danger-zone)
 16. [Reference](#16-reference)
+17. [Security model — what protects what](#17-security-model--what-protects-what)
 
 ---
 
@@ -108,6 +109,8 @@ Containers: `app` (the website) and `backup` (copies everything every 12 hours).
   |---|---|---|
   | A | `@` (yourdomain.com) | server IP |
   | A | `*` (wildcard) | server IP |
+
+  In Cloudflare keep both records on **DNS only** (grey cloud). A name can point to **only one server**: if you ever point it somewhere else (for example while testing another server), your platform goes offline and visitors see whatever that other server answers (see [section 14](#14-troubleshooting)).
 
 - Platform mode needs a **wildcard certificate**, which Let's Encrypt only gives through DNS validation:
   - **Cloudflare DNS (recommended, auto-renews):** create an API token (Cloudflare → My Profile → API Tokens → *Edit zone DNS* template → zone = your domain). Keep it for `.env` (`CF_API_TOKEN`).
@@ -420,6 +423,29 @@ If their domain changes **and** you keep verifying against your old address, not
 update `LICENSE_SERVER_URL` in their `.env` (then `docker compose up -d --force-recreate app backup`) — until then keep your old domain as an alias
 ([section 10](#10-changing-your-domain)).
 
+### 8.7 Testing a customer install safely
+
+Do this before selling, to see exactly what a customer sees. Rules we learned the hard way:
+
+1. **Give the test customer a domain of its own** — a different name from your platform, e.g. `test1.yourdomain.com` with an A record to the *test server*. Never reuse the platform's own name: a name can point to only one server, and pointing it elsewhere takes your platform offline (the symptom is your domain suddenly showing *another project* — see [section 14](#14-troubleshooting)).
+2. Keep Cloudflare records **DNS only** (grey cloud).
+3. Install it the way a customer would (the package from 8.4: `sudo ./install.sh`). On a server that already hosts other projects pass a free local port, e.g. `WEB_PORT=8082`, and use its own folder (e.g. `/opt/cofferant-customer1`).
+4. DNS not ready yet? Install with `SKIP_SSL=1` (no certificate), test locally with `curl -H "Host: test1.yourdomain.com" http://127.0.0.1:8082/healthz`, and run `make ssl` once the DNS points to the server.
+5. A folder that already has a `.env` from an earlier attempt is **refused** if its mode/domain/key differ from what you ask for. On disposable test data: `docker compose down -v && rm .env`, then run the install again.
+6. **Never put a second copy on the live platform server** (see [section 15](#15-danger-zone)).
+
+What to check:
+
+| Step | Expected |
+|---|---|
+| sign in at `https://test1.yourdomain.com/users/login/` | vendor panel opens |
+| your panel → the customer | **آخرین بررسی** shows a recent time and the test domain |
+| press **لغو اشتراک** | within ~2 minutes the owner's panel locks; scanning a QR code or opening the menu shows the *contact the coffee shop* page |
+| press **فعال‌سازی دوباره** | unlocks in about 15 seconds (or press **بررسی دوباره** on the lock page) |
+| in the test install's `.env` set `DEPLOYMENT_MODE=platform`, `LICENSE_ENFORCE=0` and a wrong `LICENSE_SERVER_URL`, then `docker compose up -d --force-recreate app` | **no effect** on the compiled package (edition lock) |
+
+Clean up: `docker compose down -v` **in that folder only**, remove its nginx entry (`rm /etc/nginx/sites-enabled/test1.yourdomain.com.conf && nginx -t && systemctl reload nginx`), trash and permanently delete the test customer in your panel, and remove the test DNS record.
+
 ---
 
 ## 9. Backups and restore
@@ -592,6 +618,30 @@ What it does, in order — and stops safely if a step fails:
 The server needs **no git and no source checkout** for this. (On a server set up this way, restart with `make up-prebuilt` or `docker compose up -d --no-build`, not `make up`, which tries to build from source.) Options: `DIR=/path` (server folder), `SSH_PORT=2222`, `SSH_KEY=~/.ssh/key`,
 `PLATFORM=linux/arm64` (ARM server), `SKIP_BUILD=1` (re-send the image you already built).
 
+**What your PC needs:** Docker Desktop **running** (the image is built on your PC), `ssh` (Git for Windows provides it; use Git Bash), and some free disk space (the packed image, about 60 MB, is kept in `dist/deploy`). The first build takes a few minutes; later ones reuse Docker's cache. The image contains your readable source — fine for your own server (customers get the compiled package from `make release`).
+
+**One-time setup — SSH key login.** The script never asks for a password, so it needs a key:
+
+```bash
+# in Git Bash on your PC (use your SSH port; 22 is the default)
+$ ls ~/.ssh/id_ed25519 || ssh-keygen -t ed25519            # create a key once (press Enter = no passphrase)
+$ ssh-copy-id -p 9011 root@YOUR_SERVER_IP                  # install it on the server (asks the root password once)
+$ ssh -p 9011 root@YOUR_SERVER_IP echo ok                  # must print ok WITHOUT asking for a password
+$ make deploy-remote HOST=root@YOUR_SERVER_IP SSH_PORT=9011
+```
+
+No `ssh-copy-id`? `cat ~/.ssh/id_ed25519.pub | ssh -p 9011 root@YOUR_SERVER_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"`.
+
+If the script says *Cannot log in … with a key*, find the reason with `ssh -p PORT -o BatchMode=yes root@IP echo ok`:
+
+| You see | Meaning / fix |
+|---|---|
+| `Permission denied (publickey)` | your key isn't on the server yet → run `ssh-copy-id` as above |
+| `Connection refused` / `timed out` | wrong port or a firewall → check `Port` in `/etc/ssh/sshd_config` on the server and use `SSH_PORT=` |
+| it works by hand but not in the script | the key has a **passphrase** (the script can't type it) → `eval $(ssh-agent) && ssh-add ~/.ssh/id_ed25519`, or use a dedicated key without passphrase |
+| your key is not `~/.ssh/id_ed25519` | pass `SSH_KEY=~/.ssh/your_key` |
+| key accepted for other users but not root | `PermitRootLogin` must be `yes` or `prohibit-password` in `/etc/ssh/sshd_config`, then `systemctl restart ssh` |
+
 **Roll back** to the previous version in one command (about 10 seconds):
 
 ```bash
@@ -619,6 +669,36 @@ Only use this if the server has the repository checked out (`git clone`). Buildi
 - **Rollback** (git route): `git log --oneline` → `git checkout <old-commit>` → `make up`. With `deploy-remote` use `make rollback-remote` instead. Database changes only go forward, so if a bad
   release changed data, restore the backup (`make restore-latest`).
 - Browsers cache styles — after a design change tell users to hard-refresh (Ctrl+F5) once.
+
+### 12.3 Manual route (build on your PC, copy by hand)
+
+The same idea as 12.1, step by step and without the safety net:
+
+```bash
+# on your PC
+$ make images-bundle                                  # -> dist/cofferant-images.tar.gz   (PLATFORM=linux/arm64 for an ARM server)
+$ scp -P 9011 dist/cofferant-images.tar.gz root@YOUR_SERVER_IP:/opt/cofferant/      # scp uses a CAPITAL -P for the port
+# on the server
+$ cd /opt/cofferant && make backup && make load-images && make up-prebuilt && make health
+```
+
+Or stream it without creating a file:
+
+```bash
+$ docker build -t cofferant-app:latest .
+$ docker save cofferant-app:latest | gzip | ssh -p 9011 root@YOUR_SERVER_IP "gunzip | docker load"
+$ ssh -p 9011 root@YOUR_SERVER_IP "cd /opt/cofferant && docker compose up -d --no-build"
+```
+
+| | `make deploy-remote` | manual route |
+|---|---|---|
+| Backup before switching | automatic (stops if it fails) | you run `make backup` yourself |
+| Old image kept for rollback | yes (`make rollback-remote`) | no |
+| Upload checksum | yes | no |
+| Waits until healthy | yes | no |
+| Updates compose file and scripts on the server | yes | no — the server must already have them (a git checkout) |
+
+Prefer `make deploy-remote` for regular updates.
 
 ---
 
@@ -707,6 +787,11 @@ with tenancy.use_tenant('homecafe'):
 | Standalone customer locked but license is valid | their server cannot reach your server (firewall, wrong URL) or clock very wrong | from their server: `curl -s -X POST -H 'Content-Type: application/json' -d '{"key":"CFR-…"}' https://yourdomain.com/api/license/verify/` |
 | Persian text looks broken in a terminal on Windows | console encoding | set `PYTHONIOENCODING=utf-8` (the app itself is fine) |
 | After restore, a customer's login fails | backup older than their last password change | set the password again in the panel |
+| Your domain suddenly shows **another project** (an app from a different server) | its DNS A record now points to that other server; that server's default nginx site answers unknown names | set the A record back to the right IP. Compare `nslookup yourdomain` with `curl -s https://api.ipify.org` run on each server |
+| `make deploy-remote` → *Cannot log in … with a key* | no key login to the server, or wrong port | [12.1 SSH key login](#121-recommended-build-on-your-pc-push-to-the-server) |
+| `make deploy-remote` fails during the build with a Docker connection error | Docker Desktop is not running on your PC | start Docker Desktop and run it again |
+| `make deploy-remote` stops at the backup step | the app on the server is unhealthy or the disk is full, so nothing was switched | `ssh … 'cd /opt/cofferant && docker compose logs --tail=50 app'`; free space; run again |
+| In Git Bash a docker/ssh command complains about a path like `C:/Program Files/Git/app/…` | Git Bash rewrites arguments that start with `/` | prefix with `MSYS_NO_PATHCONV=1`, or wrap the command: `sh -c "…"` |
 
 Still stuck? Collect: `make ps`, `make logs` (last 100 lines), `grep -v -E "SECRET|PASSWORD|TOKEN|KEY" .env`, `make health`. The answer is nearly always in the log.
 
@@ -724,9 +809,11 @@ These **destroy data**. Never run them on the real server unless you mean it:
 | `docker volume rm cofferant_*` | deletes data |
 | panel → **حذف نهایی** | permanently deletes one customer (database + photos) |
 | `rm -rf /var/lib/docker/volumes/cofferant_*` | deletes data |
+| `make up` / `docker compose up` / `bootstrap` in a **second copy** of the project on the live server | the compose project name is fixed (`cofferant`), so the second folder controls the **same containers and data volumes** as the live site and can recreate it with different settings. Use another server, or first `export COMPOSE_PROJECT_NAME=other` **and** a different `WEB_PORT` |
 
 Safe ones: `make down`, `make restart`, `make up`, `docker compose up -d --force-recreate …` (data lives in volumes and survives).
 Never copy or edit `*.sqlite3` files by hand while the app runs — use `make backup`.
+Careful with `git clone URL /some-folder/`: a path that starts with `/` is **absolute**, so it creates the folder at the disk root, not inside your current directory.
 
 Always keep: (1) off-server backups, (2) a private copy of `.env`, (3) your Cloudflare/DNS access, (4) the repository.
 
@@ -812,3 +899,34 @@ make test           # the whole test suite (≈110 tests)
 Try platform mode locally (Chrome resolves `*.localhost`):
 `DEPLOYMENT_MODE=platform PLATFORM_DOMAIN=localhost python manage.py runserver` → `http://localhost:8000/developer/` →
 create customer `demo` → `http://demo.localhost:8000/`.
+
+**Working from Windows** (your PC):
+
+- Use **Git Bash** (from Git for Windows) for `make`, the scripts and `ssh`. The Makefile finds Git Bash and Docker Desktop by itself.
+- **Docker Desktop must be running** for anything that builds or runs containers locally.
+- Git Bash rewrites arguments that start with `/` into Windows paths (`/app/x` → `C:/Program Files/Git/app/x`). If a command breaks that way, prefix it with `MSYS_NO_PATHCONV=1`.
+- Windows editors may save scripts with CRLF line endings, which break on Linux (`bash\r: No such file or directory`). The repository forces LF (`.gitattributes`), and `make deploy-remote` / `make release` convert files before they leave your PC.
+- Persian text in a terminal: `set PYTHONIOENCODING=utf-8` (or `export` in Git Bash) if a script prints garbled characters.
+
+---
+
+## 17. Security model — what protects what
+
+| Layer | What it does | Honest limit |
+|---|---|---|
+| **Customer isolation** (platform) | each hosted customer has its own SQLite file and photo folder; every query is routed to the current request's customer database; automated tests prove one customer can't see another's data | a bug in routing code would be serious — keep the test suite green (`make test`) |
+| **Developer panel** | only superusers, only on your **root** domain; it returns 404 on customer addresses and does not exist in customer builds | protect your admin password and server access |
+| **Host policing** | the platform answers only its own domain, its sub-domains and domains you registered for customers; anything else gets 404 | — |
+| **Money logic** | prices, tax, service charge, tips and coupons are computed on the server (the browser's numbers are ignored); payment callbacks are bound to the issued payment reference; ordering, quotes and license checks are rate-limited | — |
+| **License control** | hosted: checked on every request (15 s cache); standalone: asks your server — a "yes" is remembered 2 min, a "no" 15 s, with a 72 h offline grace. Cancel = panel locked, menu/QR → *contact the coffee shop* page | a customer who controls their server can interfere with it — see the next rows |
+| **Customer package** (`make release`) | compiled code with no `.py` sources, locked to the standalone edition (cannot become a platform or skip license checks), license server address baked in | bytecode can be decompiled by a determined expert; templates/CSS/JS are readable. Use a contract (no reselling / hosting for others), send updates only yourself, and watch the last-check times in your panel |
+| **Backups** | consistent snapshots every 12 h, optional off-server copy over SSH | backups contain customer data and password hashes — protect the backup server like the main one |
+
+**Secrets and hygiene**
+
+- `.env` (secret key, admin password, tokens) is never committed (git-ignored). Keep a private copy; never paste it or any token into chat, tickets or commits.
+- A `make export` bundle contains `.env` — delete it after the move.
+- Cloudflare token: permission *Zone → DNS → Edit* for the one zone only; rotate it if it ever leaks.
+- Use a long admin password (`make admin-password`); one admin account per person (`make admin-user`).
+- Keep the server's OS updated (`apt update && apt upgrade`), allow only the ports you need (your SSH port, 80, 443), and prefer SSH keys over passwords. Fail2ban or similar is recommended but not part of this project.
+- Production runs with `DJANGO_DEBUG=0`: secure cookies, HSTS, hidden error details.
