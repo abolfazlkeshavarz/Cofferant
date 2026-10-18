@@ -49,4 +49,6 @@ chmod 600 .env 2>/dev/null || true
 
 echo "Created .env with generated secrets (mode: ${MODE})."
 echo "  Admin login:  ${ADMIN_USERNAME:-admin} / ${ADMIN_PASSWORD}"
-[[ "$MODE" == "platform" ]] && echo "  This account is also your developer account for /developer/."
+if [[ "$MODE" == "platform" ]]; then
+  echo "  This account is also your developer account for /developer/."
+fi
