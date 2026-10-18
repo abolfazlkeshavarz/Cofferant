@@ -67,6 +67,41 @@ LICENSE_KEY=CFR-XXXX-XXXX-XXXX-XXXX LICENSE_SERVER_URL=https://yourdomain.com \
 If you cancel the license (or it expires) their panel locks within ~5 minutes. *Honest limitation:* a self-hosted customer has the
 source code, so this is a commercial control, not unbreakable DRM — pair it with a contract. Hosted customers (A) cannot bypass it.
 
+### Backups, changing domain, moving to a new server
+
+**Off-server backups (do this once).** Every 12 hours the app already backs up all databases, customers and photos on the server.
+So that a dead server doesn't take the backups with it, copy each one to a second machine automatically:
+```bash
+make backup-remote-setup REMOTE=backupuser@other-server.com:/backups/cofferant
+```
+It creates an SSH key inside the app, shows you the public key to add to the other machine, tests the connection and sends a first copy.
+The last copy's status shows on `/developer/backups/`. `BACKUP_REMOTE_KEEP` (default 60) limits how many the other machine keeps.
+
+**Changing the domain on the same server.**
+```bash
+make change-domain DOMAIN=newname.com        # add DROP_OLD=1 to stop serving the old domain
+```
+Point DNS at the server first (platform mode: the root and `*.newname.com`). It backs up `.env`, rewrites the domain settings, restarts, and gets the
+certificate and nginx entry. By default the **old domain keeps working** (customers' old addresses and self-hosted installs' license checks) until you drop it.
+
+**Moving to a new server (data included).**
+```bash
+# old server
+make export                                    # -> dist/cofferant-migration-….tar.gz  (data + settings, contains secrets)
+scp dist/cofferant-migration-*.tar.gz USER@NEW_SERVER:/opt/cofferant/
+
+# new server (fresh Ubuntu/Debian)
+git clone <repo> /opt/cofferant && cd /opt/cofferant
+./scripts/migrate-import.sh cofferant-migration-….tar.gz [--domain newname.com] [--no-ssl]
+```
+It installs Docker, starts the app with the old settings, restores every database and photo, re-enables customers' own domains whose DNS already points to the new server,
+and prints what is left. Use `--no-ssl` to test the new server before switching DNS, then run `make ssl` and `make add-domain DOMAIN=…`.
+If the old server is already dead, restore from the off-server copy instead (a plain backup has no settings, so say what to create):
+```bash
+MODE=platform DOMAIN=yourdomain.com LETSENCRYPT_EMAIL=you@example.com ./scripts/migrate-import.sh cofferant-2026….tar.gz
+```
+(`--skip-install` restores only the data when Docker is already set up.)
+
 ### Handy commands (`make help` lists all)
 | | |
 |---|---|
@@ -76,6 +111,9 @@ source code, so this is a commercial control, not unbreakable DRM — pair it wi
 | `make deploy-check` | pre-flight: secrets, tests, migrations, repo hygiene |
 | `make deploy-health HOST=https://…` | post-deploy smoke checks |
 | `make images-bundle` → `make load-images` | build on your PC, ship to a tiny VPS |
+| `make backup-remote-setup REMOTE=…` / `make backup-remote-test` | copy every backup to a second server |
+| `make change-domain DOMAIN=…` | move to a new domain on this server |
+| `make export` / `make import FILE=…` | move everything to a new server |
 | `make backup` | take a backup now and copy it to `backups/` |
 | `make backups-list` | automatic backups kept on the server (every 12 h, last 28) |
 | `make restore FILE=…` / `make restore-latest` | restore a backup — checks the archive first, then replaces all data |

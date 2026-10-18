@@ -56,7 +56,7 @@ echo "==> Checking that ${CUSTOM} points to this server"
 server_ip="$(curl -fsS --max-time 10 https://api.ipify.org || true)"
 domain_ip="$(getent hosts "${CUSTOM}" | awk '{print $1}' | head -1 || true)"
 if [[ -z "$domain_ip" ]]; then
-  echo "${CUSTOM} has no DNS record yet. Ask the customer to add an A record to ${server_ip:-this server's IP}, wait a few minutes, then run this again." >&2
+  echo "${CUSTOM} has no DNS record yet. Ask the customer to add an A record to ${server_ip:-the IP address of this server}, wait a few minutes, then run this again." >&2
   exit 1
 fi
 if [[ -n "$server_ip" && "$server_ip" != "$domain_ip" ]]; then

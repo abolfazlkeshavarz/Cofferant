@@ -28,6 +28,10 @@ services:
       PRICE_1Y: ${PRICE_1Y:-4290000}
       PRICE_2Y: ${PRICE_2Y:-7490000}
       PRICE_FOREVER: ${PRICE_FOREVER:-14900000}
+      PLATFORM_ALIAS_DOMAINS: ${PLATFORM_ALIAS_DOMAINS:-}
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      BACKUP_REMOTE_PORT: ${BACKUP_REMOTE_PORT:-22}
+      BACKUP_REMOTE_KEEP: ${BACKUP_REMOTE_KEEP:-60}
       ORDER_RATE_LIMIT: ${ORDER_RATE_LIMIT:-6}
       WEB_WORKERS: ${WEB_WORKERS:-2}
       WEB_THREADS: ${WEB_THREADS:-4}
@@ -37,6 +41,7 @@ services:
       - data:/app/data      # main database, every hosted customer's database, shared cache
       - media:/app/media    # uploaded photos (per customer sub-folders in platform mode)
       - backups:/app/backups # where the developer panel lists / downloads backups from
+      - sshkeys:/home/app/.ssh # key used to copy backups to a second server
 
   # Automatic backups: every BACKUP_INTERVAL_HOURS (12) a consistent copy of the main database,
   # every hosted customer's database and all photos is written to the "backups" volume.
@@ -53,14 +58,19 @@ services:
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env - run make env}"
       DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-standalone}
       BACKUP_DIR: /app/backups
+      BACKUP_REMOTE: ${BACKUP_REMOTE:-}
+      BACKUP_REMOTE_PORT: ${BACKUP_REMOTE_PORT:-22}
+      BACKUP_REMOTE_KEEP: ${BACKUP_REMOTE_KEEP:-60}
       BACKUP_KEEP: ${BACKUP_KEEP:-28}
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-12}
     volumes:
       - data:/app/data
       - media:/app/media
       - backups:/app/backups
+      - sshkeys:/home/app/.ssh
 
 volumes:
   data:
   media:
   backups:
+  sshkeys:

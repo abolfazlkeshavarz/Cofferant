@@ -74,7 +74,8 @@ else
 
       echo ""
       echo "Data"
-      if "$DOCKER" exec "$cid" python manage.py showmigrations --plan 2>/dev/null | grep -q '^\[ \]'; then
+      plan="$("$DOCKER" exec "$cid" python manage.py showmigrations --plan 2>/dev/null || true)"
+      if grep -q '^\[ \]' <<<"$plan"; then
         bad "there are unapplied migrations (restart the container: make restart)"
       else
         ok "all migrations applied"

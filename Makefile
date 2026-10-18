@@ -78,6 +78,7 @@ ADMIN = PROD="$(PROD)" bash scripts/admin.sh
         images images-bundle load-images bootstrap ssl add-domain remove-domain \
         install migrate run demo test check \
         backup backups-list restore restore-latest shell \
+        export import change-domain backup-remote-setup backup-remote-test \
         admin-user admin-password migrate-tenants \
         health deploy-check deploy-health
 
@@ -200,6 +201,24 @@ backup: ## Take a backup right now (all databases, customers and photos) and cop
 
 backups-list: ## List the automatic backups kept on the server (every 12 hours)
 	@$(COMPOSE) exec -T app sh -c "ls -lh backups"
+
+backup-remote-setup: ## Copy every automatic backup to a second server too. REMOTE=user@host:/backups/cofferant
+	@test -n "$(REMOTE)" || { echo "REMOTE is required: make backup-remote-setup REMOTE=user@host:/backups/cofferant"; exit 1; }
+	@bash scripts/backup-remote-setup.sh "$(REMOTE)"
+
+backup-remote-test: ## Test the off-server backup connection
+	@$(COMPOSE) exec -T app python manage.py backup_remote --test
+
+export: ## Pack data + settings into one file for moving to a NEW server (then: make import there)
+	@bash scripts/export-bundle.sh $(FILE)
+
+import: ## On a NEW server: set up from a bundle or backup. FILE=… [DOMAIN=new.com] [NO_SSL=1]
+	@test -n "$(FILE)" || { echo "FILE is required: make import FILE=cofferant-migration-....tar.gz"; exit 1; }
+	@bash scripts/migrate-import.sh "$(FILE)" $(if $(DOMAIN),--domain "$(DOMAIN)") $(if $(NO_SSL),--no-ssl)
+
+change-domain: ## Move this installation to a NEW domain on the same server. DOMAIN=new.com [DROP_OLD=1]
+	@test -n "$(DOMAIN)" || { echo "DOMAIN is required: make change-domain DOMAIN=newname.com"; exit 1; }
+	@bash scripts/change-domain.sh "$(DOMAIN)" $(if $(DROP_OLD),--drop-old)
 
 restore: ## Restore FILE=backups/cofferant-....tar.gz — REPLACES all current data
 	@test -f "$(FILE)" || { echo "FILE is required: make restore FILE=backups/cofferant-....tar.gz"; exit 1; }

@@ -217,6 +217,7 @@ def backups(request):
         b["human"] = backup.human_size(b["size"])
     return render(request, "licensing/backups.html", {
         "items": items, "interval": settings.BACKUP_INTERVAL_HOURS, "keep": settings.BACKUP_KEEP,
+        "remote": settings.BACKUP_REMOTE, "remote_status": backup.read_remote_status(),
     })
 
 

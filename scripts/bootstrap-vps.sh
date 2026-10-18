@@ -133,8 +133,12 @@ else
 fi
 
 # --------------------------------------------------------------- TLS + nginx
-echo "==> Obtaining the SSL certificate and configuring host nginx"
-make ssl
+if [[ "${SKIP_SSL:-0}" == "1" ]]; then
+  echo "==> SKIP_SSL=1: not requesting a certificate yet (run 'make ssl' once DNS points here)"
+else
+  echo "==> Obtaining the SSL certificate and configuring host nginx"
+  make ssl
+fi
 
 echo ""
 echo "================================================================"

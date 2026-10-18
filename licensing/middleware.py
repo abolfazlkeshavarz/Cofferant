@@ -30,11 +30,12 @@ class TenantMiddleware:
         request.tenant = None
         if settings.DEPLOYMENT_MODE == "platform":
             host = request._get_raw_host().split(":")[0].lower().rstrip(".")
-            root = settings.PLATFORM_DOMAIN
-            if host in (root, f"www.{root}") or host in LOOPBACK_HOSTS:
+            roots = [settings.PLATFORM_DOMAIN, *settings.PLATFORM_ALIAS_DOMAINS]
+            if host in roots or host in [f"www.{r}" for r in roots] or host in LOOPBACK_HOSTS:
                 pass
             else:
-                if host.endswith("." + root):
+                root = next((r for r in roots if host.endswith("." + r)), None)
+                if root:
                     slug = host[: -len(root) - 1]
                 else:
                     slug = checker.slug_for_domain(host)

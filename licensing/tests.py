@@ -519,3 +519,111 @@ class PlatformTenancyTests(unittest.TestCase):
         page = self.client.get(reverse("developer:detail", args=[lic.pk]), HTTP_HOST="example.test").content.decode()
         self.assertIn("make add-domain DOMAIN=menu.dar.ir", page)
 
+
+
+    # ------------------------------------------------------------------ old domain keeps working after a domain change
+    def test_old_platform_domain_alias_serves_sales_page_tenants_and_license_api(self):
+        lic, creds = self.create("alpha", "کافه آلفا")
+        with override_settings(PLATFORM_DOMAIN="newname.test", PLATFORM_ALIAS_DOMAINS=["example.test"]):
+            cache.clear()
+            # customers' addresses work on the NEW domain and, through the alias, on the OLD one
+            for host in ("alpha.newname.test", "alpha.example.test"):
+                r = Client().get("/", HTTP_HOST=host)
+                self.assertEqual(r.status_code, 200, host)
+                self.assertEqual(r.context["venue"].name, "کافه آلفا", host)
+            # the root of either domain is the platform (sales page / developer panel)
+            self.assertEqual(Client().get("/", HTTP_HOST="newname.test").status_code, 200)
+            self.assertEqual(Client().get("/", HTTP_HOST="example.test").status_code, 200)
+            # self-hosted installs keep verifying against the old address
+            self_lic = make_license()
+            r = Client().post("/api/license/verify/", json.dumps({"key": self_lic.key}),
+                              content_type="application/json", HTTP_HOST="example.test")
+            self.assertTrue(r.json()["valid"])
+            # the owner can still sign in on either address
+            for host in ("alpha.newname.test", "alpha.example.test"):
+                c = Client()
+                r = c.post(reverse("login"), {"username": "owner", "password": creds["password"]}, HTTP_HOST=host)
+                self.assertEqual(r.status_code, 302, host)
+        # without the alias the old sub-domain is gone
+        with override_settings(PLATFORM_DOMAIN="newname.test", PLATFORM_ALIAS_DOMAINS=[]):
+            cache.clear()
+            self.assertEqual(Client().get("/", HTTP_HOST="alpha.example.test").status_code, 404)
+
+
+# ---------------------------------------------------------------------------
+# Off-server backup copies
+# ---------------------------------------------------------------------------
+class OffServerBackupTests(TestCase):
+    def setUp(self):
+        self.out = Path(tempfile.mkdtemp(prefix="cfr-bk-"))
+        self._ov = override_settings(BACKUP_DIR=str(self.out), BACKUP_REMOTE="backup@vault.example.com:/srv/cofferant",
+                                     BACKUP_REMOTE_PORT=2222, BACKUP_REMOTE_KEEP=3, BACKUP_SSH_KEY="/tmp/key")
+        self._ov.enable()
+
+    def tearDown(self):
+        self._ov.disable()
+        shutil.rmtree(self.out, ignore_errors=True)
+
+    def test_every_backup_is_copied_with_scp_and_old_copies_are_pruned_remotely(self):
+        from . import backup
+        with mock.patch("licensing.backup.subprocess.run") as run:
+            path, _ = backup.create_backup()
+        calls = [c.args[0] for c in run.call_args_list]
+        self.assertEqual([c[0] for c in calls], ["ssh", "scp", "ssh"])
+        self.assertIn("backup@vault.example.com", calls[0])
+        self.assertIn("mkdir -p /srv/cofferant", calls[0][-1])
+        self.assertEqual(calls[1][-2:], [str(path), "backup@vault.example.com:/srv/cofferant/"])
+        self.assertIn("2222", calls[1])
+        self.assertIn("-P", calls[1])
+        self.assertIn("tail -n +4", calls[2][-1])  # keep = 3 -> delete from the 4th newest on
+        status = backup.read_remote_status()
+        self.assertTrue(status["ok"])
+        self.assertEqual(status["file"], path.name)
+
+    def test_remote_failure_never_loses_the_local_backup(self):
+        import subprocess
+        from . import backup
+        err = subprocess.CalledProcessError(255, "ssh", stderr="Permission denied (publickey).")
+        with mock.patch("licensing.backup.subprocess.run", side_effect=err):
+            path, count = backup.create_backup()
+        self.assertTrue(path.exists())
+        status = backup.read_remote_status()
+        self.assertFalse(status["ok"])
+        self.assertIn("Permission denied", status["detail"])
+
+    def test_timeout_and_missing_ssh_are_reported_not_raised(self):
+        import subprocess
+        from . import backup
+        for exc in (subprocess.TimeoutExpired("scp", 1), FileNotFoundError("ssh")):
+            with mock.patch("licensing.backup.subprocess.run", side_effect=exc):
+                self.assertFalse(backup.push_remote(test=True)["ok"])
+
+    def test_bad_remote_setting_is_rejected_without_running_anything(self):
+        from . import backup
+        for bad in ("no-colon", "user@host", "user@host:relative/path", "user@host:/p; rm -rf /", "x y@h:/p"):
+            with override_settings(BACKUP_REMOTE=bad), mock.patch("licensing.backup.subprocess.run") as run:
+                status = backup.push_remote(test=True)
+                run.assert_not_called()
+                self.assertFalse(status["ok"], bad)
+
+    def test_nothing_happens_when_not_configured(self):
+        from . import backup
+        with override_settings(BACKUP_REMOTE=""), mock.patch("licensing.backup.subprocess.run") as run:
+            self.assertIsNone(backup.push_remote(test=True))
+            run.assert_not_called()
+
+    def test_command_and_developer_page_show_the_state(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        with mock.patch("licensing.backup.subprocess.run"):
+            call_command("backup_remote", "--test")
+        with override_settings(BACKUP_REMOTE=""):
+            with self.assertRaises(CommandError):
+                call_command("backup_remote", "--test")
+        with override_settings(DEPLOYMENT_MODE="platform", PLATFORM_DOMAIN="example.test", ALLOWED_HOSTS=["*"]):
+            dev = User.objects.create_superuser("dev", "d@x.com", "dev-pass-12345")
+            self.client.force_login(dev)
+            html = self.client.get(reverse("developer:backups"), HTTP_HOST="example.test").content.decode()
+        self.assertIn("backup@vault.example.com:/srv/cofferant", html)
+        self.assertIn("connection works", html)
+

@@ -48,6 +48,9 @@ DEPLOYMENT_MODE = os.environ.get("DEPLOYMENT_MODE", "standalone")
 if DEPLOYMENT_MODE not in ("standalone", "platform"):
     raise RuntimeError("DEPLOYMENT_MODE must be 'standalone' or 'platform'")
 PLATFORM_DOMAIN = os.environ.get("PLATFORM_DOMAIN", "localhost").lower()
+# Previous platform domains that must keep working after a domain change (customers' sub-domains and the
+# license-check address of self-hosted installs). Set by scripts/change-domain.sh.
+PLATFORM_ALIAS_DOMAINS = [d.lower() for d in _env_list("PLATFORM_ALIAS_DOMAINS")]
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
 TENANT_DB_DIR = DATA_DIR / "tenants"
 if DEPLOYMENT_MODE == "platform":
@@ -66,6 +69,11 @@ LICENSE_GRACE_HOURS = int(os.environ.get("LICENSE_GRACE_HOURS", "72"))
 BACKUP_DIR = os.environ.get("BACKUP_DIR") or str(BASE_DIR / "backups")
 BACKUP_KEEP = int(os.environ.get("BACKUP_KEEP", "28"))                    # 28 x 12h = 14 days
 BACKUP_INTERVAL_HOURS = float(os.environ.get("BACKUP_INTERVAL_HOURS", "12"))
+# Off-server copy of every backup (survives the loss of this server). "user@host:/path/to/folder" over SSH.
+BACKUP_REMOTE = os.environ.get("BACKUP_REMOTE", "").strip()
+BACKUP_REMOTE_PORT = int(os.environ.get("BACKUP_REMOTE_PORT", "22"))
+BACKUP_REMOTE_KEEP = int(os.environ.get("BACKUP_REMOTE_KEEP", "60"))
+BACKUP_SSH_KEY = os.environ.get("BACKUP_SSH_KEY", "") or str(Path.home() / ".ssh" / "id_ed25519")
 
 # Marketing page prices (toman) shown on the platform landing page / developer panel
 PLAN_PRICES = {

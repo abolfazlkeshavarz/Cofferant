@@ -6,6 +6,15 @@
   <form method="post" action="{% url 'developer:backup_now' %}">{% csrf_token %}
     <button class="btn btn-primary" type="submit"><svg class="icon"><use href="#i-download"/></svg>همین حالا پشتیبان بگیر</button></form>
 </div>
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><h3>☁️ نسخه خارج از سرور</h3>
+    {% if remote %}{% if remote_status and remote_status.ok %}<span class="badge badge-ready">فعال</span>{% elif remote_status %}<span class="badge badge-cancelled">خطا</span>{% else %}<span class="badge badge-new">هنوز ارسال نشده</span>{% endif %}{% else %}<span class="badge badge-new">غیرفعال</span>{% endif %}</div>
+  {% if remote %}
+    <p class="small mb-0">مقصد: <b class="ltr">{{ remote }}</b>{% if remote_status %}<br>آخرین نتیجه: <b>{{ remote_status.detail }}</b> <span class="muted ltr">({{ remote_status.at }})</span>{% endif %}</p>
+  {% else %}
+    <p class="small mb-0 text-warn">اگر خود سرور خراب شود، پشتیبان‌های روی همان سرور هم از بین می‌روند. با یک سرور یا فضای دیگر، هر پشتیبان خودکار هم‌زمان آنجا کپی می‌شود: روی سرور بزنید <span class="ltr">make backup-remote-setup REMOTE=user@host:/backups/cofferant</span></p>
+  {% endif %}
+</div>
 <div class="card card-flush"><div class="table-wrap">
   <table class="table">
     <thead><tr><th>فایل</th><th>زمان</th><th>حجم</th><th></th></tr></thead>

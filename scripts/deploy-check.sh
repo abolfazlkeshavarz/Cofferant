@@ -56,6 +56,8 @@ else
   [[ "${DJANGO_CSRF_TRUSTED_ORIGINS:-}" == https://* ]] && ok "CSRF trusted origins are https" || warn "DJANGO_CSRF_TRUSTED_ORIGINS should be https://${APP_DOMAIN:-your.domain}"
   [[ -n "${LETSENCRYPT_EMAIL:-}" ]] && ok "LETSENCRYPT_EMAIL set" || warn "LETSENCRYPT_EMAIL is empty (needed by make ssl)"
 
+  [[ -n "${BACKUP_REMOTE:-}" ]] && ok "off-server backups: ${BACKUP_REMOTE}" || warn "no off-server backup copy (BACKUP_REMOTE): losing this server would lose the backups too — make backup-remote-setup REMOTE=user@host:/path"
+
   if [[ "$MODE" == "platform" ]]; then
     [[ "${PLATFORM_DOMAIN:-localhost}" != "localhost" ]] && ok "PLATFORM_DOMAIN=${PLATFORM_DOMAIN}" || bad "platform mode needs PLATFORM_DOMAIN (your root domain)"
     [[ -n "${CF_API_TOKEN:-}" ]] && ok "CF_API_TOKEN set (wildcard certificate can auto-renew)" || warn "no CF_API_TOKEN: the wildcard certificate needs CHALLENGE=dns and manual renewal"
