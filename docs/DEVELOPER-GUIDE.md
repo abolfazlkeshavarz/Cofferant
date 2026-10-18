@@ -77,6 +77,7 @@ Containers: `app` (the website) and `backup` (copies everything every 12 hours).
 | Add a customer | Developer panel → **مشتری جدید** |
 | Give a customer their own domain (on my server) | Panel → customer → **دامنه اختصاصی** → then `make add-domain DOMAIN=menu.cafe.ir` |
 | Sell a standalone install | Panel → customer, mode **نصب روی دامنه مشتری** → send key + command from [section 8](#8-selling-method-2--customers-own-server-and-domain-standalone) |
+| Build the customer package (no source code) | `make release VERSION=1.0.0 LICENSE_SERVER_URL=https://yourdomain.com` (on your PC) |
 | Lock a customer who didn't pay | Panel → customer → **لغو اشتراک** (works within seconds) |
 | Renew a customer | Panel → customer → **تمدید / تغییر اشتراک** |
 | Set a customer's password | Panel → customer → **تعیین رمز** |
@@ -296,6 +297,8 @@ their install asks your server "is my key valid?" every few minutes. Cancel or l
 - A domain with an **A record** to that server (e.g. `menu.mycafe.ir`).
 - An email address for certificate warnings.
 - Nothing else: you send them the package from 8.4 (no repository access).
+
+**What gets installed on their server** (the installer does all of it): Docker Engine + the compose plugin, host nginx + certbot (HTTPS), and **one image, `cofferant-app`**, loaded from the package. That single image already contains Python and all libraries and runs as two containers (`app` and `backup`), so nothing is pulled from Docker Hub for the app, and no Python, database server or repository is needed on the host. The package is about 60 MB compressed. Internet access is used only for Docker's apt repository (once), Let's Encrypt, and your license server.
 
 ### 8.2 Step by step
 
@@ -649,7 +652,8 @@ with tenancy.use_tenant('homecafe'):
 | Domain form says the domain is **already registered / in use** | another customer (maybe in the trash) holds it, or it is still a platform alias | [section 7](#7-customer-with-their-own-domain-hosted-on-your-server) and [13](#13-emergency-recipes-no-web-panel-needed) |
 | `/developer/` shows 404 | not `DEPLOYMENT_MODE=platform`, or you are on a customer address | `grep DEPLOYMENT_MODE .env`; use your root domain |
 | `/developer/` redirects to the home page | account is not a superuser | `make admin-user`, or the shell recipe |
-| Customer sees **"پنل مدیریت غیرفعال است"** (lock icon) | license cancelled/expired (or key/URL wrong on a standalone install) | renew/reactivate in the panel; standalone: check `LICENSE_KEY`, `LICENSE_SERVER_URL`, DNS to your server |
+| Customer sees **"پنل مدیریت غیرفعال است"** (lock icon) | license cancelled/expired (or key/URL wrong on a standalone install) | renew/reactivate in the panel (unlocks in ~15 s; the owner can press **بررسی دوباره** on the lock page to check at once); standalone: check `LICENSE_KEY`, `LICENSE_SERVER_URL`, DNS to your server |
+| Customers scanning a QR code land on a page asking them to **contact the coffee shop** | the café's license is inactive (cancelled/expired/missing key): menu and QR codes are deliberately hidden | renew/reactivate; the page shows the phone/Instagram/address from the café's **تنظیمات**, so keep those filled in |
 | Browser warns "certificate not valid" on `name.yourdomain.com` | no wildcard certificate yet | `CHALLENGE=cloudflare make ssl` (or `dns`) |
 | `make ssl` fails: *DNS problem / authentication* | wrong or too-narrow Cloudflare token (needs Zone→DNS→Edit for **that** zone), or DNS not pointing | fix token/DNS, rerun `make ssl`. Nothing breaks; the old certificate keeps working |
 | `*.yourdomain.com` addresses don't open | missing wildcard DNS record | add `A  *  <server IP>` |
@@ -702,6 +706,7 @@ Always keep: (1) off-server backups, (2) a private copy of `.env`, (3) your Clou
 | `down` / `restart` / `ps` / `logs` | stop / restart / status / logs | `make logs` |
 | `update` | `git pull` + `up` | `make update` |
 | `clean` | **delete containers and volumes** | — |
+| `release` | build the locked, compiled **customer package** (no source code) | `make release VERSION=1.0.0 LICENSE_SERVER_URL=https://yourdomain.com` |
 | `images` / `images-bundle` / `load-images` | build image / pack for a small VPS / load it | `make images-bundle` |
 | `bootstrap` | fresh-VPS one-shot setup | `MODE=platform DOMAIN=x.com LETSENCRYPT_EMAIL=a@b.c make bootstrap` |
 | `ssl` | host nginx + certificate | `CHALLENGE=cloudflare make ssl` |
@@ -718,7 +723,7 @@ Always keep: (1) off-server backups, (2) a private copy of `.env`, (3) your Clou
 
 ### 16.2 Scripts (`scripts/`, called by the targets above)
 
-`bootstrap-vps.sh` (fresh server) · `init-env.sh` (create `.env`) · `deploy-host-nginx.sh` (nginx + certificate) ·
+`bootstrap-vps.sh` (fresh server) · `build-release.sh` (customer package) · `install-docker.sh` (used by the customer installer) · `init-env.sh` (create `.env`) · `deploy-host-nginx.sh` (nginx + certificate) ·
 `add-domain.sh` / `remove-domain.sh` · `change-domain.sh` · `export-bundle.sh` / `migrate-import.sh` ·
 `backup-remote-setup.sh` · `build-images.sh` / `load-images.sh` · `health.sh` · `deploy-check.sh` ·
 `rotate-admin-password.sh` · `admin.sh` · `demo-data.sh` · `lib.sh` (shared helpers). Inside the image: `docker/entrypoint.sh`, `docker/restore.sh`.
