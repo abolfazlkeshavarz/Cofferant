@@ -82,7 +82,8 @@ Containers: `app` (the website) and `backup` (copies everything every 12 hours).
 | Renew a customer | Panel → customer → **تمدید / تغییر اشتراک** |
 | Set a customer's password | Panel → customer → **تعیین رمز** |
 | Change subscription prices | Panel → **قیمت اشتراک‌ها** |
-| Update the software | `make backup && make update` |
+| Update the software (build on my PC) | `make deploy-remote HOST=root@SERVER` (rollback: `make rollback-remote HOST=root@SERVER`) |
+| Update the software (git on the server) | `make backup && make update` |
 | See if everything is OK | `make health` |
 | Read the logs | `make logs` |
 | Back up right now | `make backup` |
@@ -131,15 +132,18 @@ $ CHALLENGE=cloudflare make ssl
 
 Manual TXT record instead: `CHALLENGE=dns make ssl` (certbot tells you the record to add).
 
-Small server that runs out of memory while building? Build on your PC and ship the image:
+**Build on your PC instead of on the server (recommended — no git, no compiling on the server).** From your PC, with SSH key login to the server:
 
 ```bash
-# on your PC
-make images-bundle                                   # -> dist/cofferant-images.tar.gz
-scp dist/cofferant-images.tar.gz USER@SERVER:/opt/cofferant/
-# on the server
-make load-images && make up-prebuilt
+$ make deploy-remote HOST=root@YOUR_SERVER_IP \
+      MODE=platform DOMAIN=yourdomain.com LETSENCRYPT_EMAIL=you@example.com
 ```
+
+It builds the image on your PC, uploads it (checksum verified) with the compose file and scripts, installs Docker on the server if needed,
+loads the image and — on a brand-new server — runs the bootstrap for the certificate and nginx. See [section 12](#12-updating-the-software)
+for updates and rollback. (Needs `ssh` on your PC; on Windows, Git for Windows provides it. `ssh-copy-id root@YOUR_SERVER_IP` sets up key login.)
+
+The manual route still works for tiny servers: `make images-bundle` on your PC → `scp` the file → `make load-images && make up-prebuilt` on the server.
 
 ### 3.3 Check it
 
@@ -570,6 +574,37 @@ Only `.env`-level things are new (secret key, admin password); standalone custom
 
 ## 12. Updating the software
 
+### 12.1 Recommended: build on your PC, push to the server
+
+```bash
+# on your PC, in the project folder (SSH key login to the server)
+$ make deploy-remote HOST=root@YOUR_SERVER_IP                     # DIR=/opt/cofferant by default
+$ make deploy-health HOST=https://yourdomain.com
+```
+
+What it does, in order — and stops safely if a step fails:
+
+1. builds the image on your PC (version = the git commit, e.g. `cc19ef6`; `-dirty` if you have uncommitted changes) and checks its CPU architecture
+2. uploads it with the small support files (compose, Makefile, scripts) — never your `.env`, databases, photos or backups — and verifies the checksum
+3. on the server: **takes a backup first** (if the backup fails, nothing is switched), keeps the running image as `previous`, loads the new one, restarts, and waits until it is healthy
+4. prints the result; on a failed health check it tells you how to go back
+
+The server needs **no git and no source checkout** for this. (On a server set up this way, restart with `make up-prebuilt` or `docker compose up -d --no-build`, not `make up`, which tries to build from source.) Options: `DIR=/path` (server folder), `SSH_PORT=2222`, `SSH_KEY=~/.ssh/key`,
+`PLATFORM=linux/arm64` (ARM server), `SKIP_BUILD=1` (re-send the image you already built).
+
+**Roll back** to the previous version in one command (about 10 seconds):
+
+```bash
+$ make rollback-remote HOST=root@YOUR_SERVER_IP
+```
+
+Database changes only go forward: if the newer version changed data, also restore the backup taken at the start of the deploy (`make restore-latest` on the server).
+
+**Brand-new server:** the same `make deploy-remote …` command uploads everything and installs Docker; if the server has no `.env` yet it stops with the one
+command to finish (or does it for you when you pass `MODE=platform DOMAIN=… LETSENCRYPT_EMAIL=…`).
+
+### 12.2 Alternative: update from git on the server
+
 ```bash
 $ cd /opt/cofferant
 $ make backup                  # always first
@@ -577,10 +612,12 @@ $ make update                  # git pull --ff-only, rebuild, start (migrations 
 $ make health
 ```
 
+Only use this if the server has the repository checked out (`git clone`). Building on a small server can run out of memory — then prefer 12.1.
+
 - Migrations for **every hosted customer** run on container start (`migrate_tenants`). Run by hand: `make migrate-tenants`.
 - Release checklist on your PC: `make test` and `make deploy-check` pass, then push.
-- **Rollback:** `git log --oneline` → `git checkout <old-commit>` → `make up`. Database changes only go forward, so if a bad
-  release changed data, restore the backup from step 1 (`make restore-latest`).
+- **Rollback** (git route): `git log --oneline` → `git checkout <old-commit>` → `make up`. With `deploy-remote` use `make rollback-remote` instead. Database changes only go forward, so if a bad
+  release changed data, restore the backup (`make restore-latest`).
 - Browsers cache styles — after a design change tell users to hard-refresh (Ctrl+F5) once.
 
 ---
@@ -706,6 +743,7 @@ Always keep: (1) off-server backups, (2) a private copy of `.env`, (3) your Clou
 | `down` / `restart` / `ps` / `logs` | stop / restart / status / logs | `make logs` |
 | `update` | `git pull` + `up` | `make update` |
 | `clean` | **delete containers and volumes** | — |
+| `deploy-remote` / `rollback-remote` | build on your PC, deploy to the server over SSH / go back one version | `make deploy-remote HOST=root@1.2.3.4` |
 | `release` | build the locked, compiled **customer package** (no source code) | `make release VERSION=1.0.0 LICENSE_SERVER_URL=https://yourdomain.com` |
 | `images` / `images-bundle` / `load-images` | build image / pack for a small VPS / load it | `make images-bundle` |
 | `bootstrap` | fresh-VPS one-shot setup | `MODE=platform DOMAIN=x.com LETSENCRYPT_EMAIL=a@b.c make bootstrap` |
@@ -723,7 +761,7 @@ Always keep: (1) off-server backups, (2) a private copy of `.env`, (3) your Clou
 
 ### 16.2 Scripts (`scripts/`, called by the targets above)
 
-`bootstrap-vps.sh` (fresh server) · `build-release.sh` (customer package) · `install-docker.sh` (used by the customer installer) · `init-env.sh` (create `.env`) · `deploy-host-nginx.sh` (nginx + certificate) ·
+`bootstrap-vps.sh` (fresh server) · `deploy-remote.sh` (build locally + deploy over SSH) · `build-release.sh` (customer package) · `install-docker.sh` (used by the customer installer) · `init-env.sh` (create `.env`) · `deploy-host-nginx.sh` (nginx + certificate) ·
 `add-domain.sh` / `remove-domain.sh` · `change-domain.sh` · `export-bundle.sh` / `migrate-import.sh` ·
 `backup-remote-setup.sh` · `build-images.sh` / `load-images.sh` · `health.sh` · `deploy-check.sh` ·
 `rotate-admin-password.sh` · `admin.sh` · `demo-data.sh` · `lib.sh` (shared helpers). Inside the image: `docker/entrypoint.sh`, `docker/restore.sh`.

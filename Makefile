@@ -75,7 +75,7 @@ export DOCKER
 ADMIN = PROD="$(PROD)" bash scripts/admin.sh
 
 .PHONY: help env up up-prebuilt down restart logs ps clean update \
-        images images-bundle release load-images bootstrap ssl add-domain remove-domain \
+        images images-bundle release deploy-remote rollback-remote load-images bootstrap ssl add-domain remove-domain \
         install migrate run demo test check \
         backup backups-list restore restore-latest shell \
         export import change-domain backup-remote-setup backup-remote-test \
@@ -141,6 +141,12 @@ update: ## Pull the latest code and rebuild (git pull + up)
 
 images: ## Build the production image without starting anything
 	$(DOCKER) build -t cofferant-app:$(VERSION) .
+
+deploy-remote: ## Build the image HERE and deploy it to your server over SSH (no git/build on the server). HOST=user@server [DIR=/opt/cofferant]
+	@bash scripts/deploy-remote.sh
+
+rollback-remote: ## Switch the server back to the previous version. HOST=user@server
+	@bash scripts/deploy-remote.sh --rollback
 
 release: ## Build the locked CUSTOMER package (no source code). VERSION=1.0.0 LICENSE_SERVER_URL=https://your-platform-domain
 	@bash scripts/build-release.sh

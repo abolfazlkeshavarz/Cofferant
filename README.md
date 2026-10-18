@@ -104,6 +104,8 @@ MODE=platform DOMAIN=yourdomain.com LETSENCRYPT_EMAIL=you@example.com ./scripts/
 ```
 (`--skip-install` restores only the data when Docker is already set up.)
 
+**Deploy without building on the server:** `make deploy-remote HOST=root@YOUR_SERVER_IP` builds the image on your PC, uploads it, backs up, switches and health-checks (no git on the server); `make rollback-remote HOST=…` goes back one version. See docs/DEVELOPER-GUIDE.md §12.
+
 ### Handy commands (`make help` lists all)
 | | |
 |---|---|
