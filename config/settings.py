@@ -47,6 +47,13 @@ ALLOWED_HOSTS = _env_list(
 DEPLOYMENT_MODE = os.environ.get("DEPLOYMENT_MODE", "standalone")
 if DEPLOYMENT_MODE not in ("standalone", "platform"):
     raise RuntimeError("DEPLOYMENT_MODE must be 'standalone' or 'platform'")
+# Customer release builds ("standalone" edition, see config/edition.py) are locked: they can never become a
+# platform and never run without license checks, whatever the customer's .env says.
+from . import edition as _edition  # noqa: E402
+
+EDITION = _edition.EDITION
+if EDITION == "standalone":
+    DEPLOYMENT_MODE = "standalone"
 PLATFORM_DOMAIN = os.environ.get("PLATFORM_DOMAIN", "localhost").lower()
 # Previous platform domains that must keep working after a domain change (customers' sub-domains and the
 # license-check address of self-hosted installs). Set by scripts/change-domain.sh.
@@ -64,6 +71,10 @@ LICENSE_ENFORCE = os.environ.get("LICENSE_ENFORCE", "0") == "1"
 LICENSE_KEY = os.environ.get("LICENSE_KEY", "")
 LICENSE_SERVER_URL = os.environ.get("LICENSE_SERVER_URL", "").rstrip("/")
 LICENSE_GRACE_HOURS = int(os.environ.get("LICENSE_GRACE_HOURS", "72"))
+if EDITION == "standalone":
+    LICENSE_ENFORCE = True
+    if _edition.LOCKED_LICENSE_SERVER_URL:  # the address is part of the build, not of the customer's settings
+        LICENSE_SERVER_URL = _edition.LOCKED_LICENSE_SERVER_URL.rstrip("/")
 
 # Automatic backups (see the "backup" service in docker-compose.yml)
 BACKUP_DIR = os.environ.get("BACKUP_DIR") or str(BASE_DIR / "backups")

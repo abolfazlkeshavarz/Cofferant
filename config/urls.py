@@ -13,6 +13,8 @@ urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url='/static/images/fevicon.png', permanent=True)),
     path('healthz', licensing_views.healthz),
     path('api/license/verify/', licensing_views.verify_api),
+    path('license/unavailable/', licensing_views.unavailable, name='license_unavailable'),
+    path('license/recheck/', licensing_views.recheck, name='license_recheck'),
     path('developer/', include('licensing.urls')),
     path('admin/', admin.site.urls),
     path('', include('home.urls')),

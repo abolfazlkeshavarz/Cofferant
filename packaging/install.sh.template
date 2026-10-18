@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#
+# Cofferant installer for YOUR server (Ubuntu or Debian).
+#
+#     sudo ./install.sh
+#
+# It asks for three things: your domain, your email and the license key you received.
+# Before you start: the domain's DNS "A" record must already point to this server.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+if [[ "$(id -u)" != "0" ]]; then exec sudo -E bash "$0" "$@"; fi
+
+export MODE=standalone
+export LICENSE_SERVER_URL="@LICENSE_SERVER_URL@"
+
+[[ -n "${DOMAIN:-}" ]] || read -r -p "Domain of your menu site (e.g. menu.mycafe.com): " DOMAIN
+[[ -n "${LETSENCRYPT_EMAIL:-}" ]] || read -r -p "Your email (for certificate warnings): " LETSENCRYPT_EMAIL
+[[ -n "${LICENSE_KEY:-}" ]] || read -r -p "License key (CFR-XXXX-XXXX-XXXX-XXXX): " LICENSE_KEY
+export DOMAIN LETSENCRYPT_EMAIL LICENSE_KEY
+
+bash scripts/install-docker.sh
+
+echo "==> Loading the application"
+gunzip -c cofferant-images.tar.gz | docker load
+
+exec bash scripts/bootstrap-vps.sh

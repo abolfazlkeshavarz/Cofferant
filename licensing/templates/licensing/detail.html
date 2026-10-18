@@ -45,7 +45,7 @@
     <div class="card" style="border-color:color-mix(in srgb,var(--bad) 40%,var(--line))">
       <div class="card-title"><h3>کنترل دسترسی</h3></div>
       {% if lic.status == 'active' %}
-        <p class="muted small">با لغو اشتراک، پنل مدیریت و ثبت سفارش این مشتری <b>از همین لحظه</b> غیرفعال می‌شود (منوی مشتریان فقط نمایشی می‌ماند). اطلاعات او حذف نمی‌شود.</p>
+        <p class="muted small">با لغو اشتراک، پنل مدیریت و ثبت سفارش این مشتری <b>از همین لحظه</b> غیرفعال می‌شود (منو و کدهای QR هم از دسترس خارج می‌شوند و مشتری‌ها به صفحه «تماس با کافه» هدایت می‌شوند). اطلاعات او حذف نمی‌شود.</p>
         <form method="post" action="{% url 'developer:cancel' lic.pk %}" class="row" onsubmit="return confirm('اشتراک این مشتری لغو شود؟ پنل او فوراً از کار می‌افتد.')">{% csrf_token %}
           <div class="grow">{{ cancel_form.reason }}</div>
           <button class="btn btn-danger" type="submit" style="background:var(--bad);color:#fff;border-color:var(--bad)">لغو اشتراک</button>

@@ -232,7 +232,7 @@ The amount you enter when creating/renewing is recorded as revenue (it feeds the
 
 | Action | Effect |
 |---|---|
-| **لغو اشتراک** (cancel) | the customer's vendor panel and ordering stop **within seconds** (hosted) or ≤5 minutes (standalone). Their public menu still shows but cannot take orders. Data is kept. |
+| **لغو اشتراک** (cancel) | the customer's vendor panel locks and **their menu and QR codes stop working**: visitors are redirected to a "contact the coffee shop" page. Hosted: within seconds; standalone: within ~2 minutes. Data is kept. |
 | **فعال‌سازی دوباره** | undo a cancel immediately |
 | **تمدید** | extends / changes the plan |
 | **تعیین رمز** | set the vendor's password (≥8 characters) or leave empty for a random one; shown once |
@@ -295,7 +295,7 @@ their install asks your server "is my key valid?" every few minutes. Cancel or l
 - A VPS (Ubuntu/Debian, 1 CPU / 1 GB or more), root/sudo, ports 80/443 open.
 - A domain with an **A record** to that server (e.g. `menu.mycafe.ir`).
 - An email address for certificate warnings.
-- Access to the code (see 8.4).
+- Nothing else: you send them the package from 8.4 (no repository access).
 
 ### 8.2 Step by step
 
@@ -303,20 +303,25 @@ their install asks your server "is my key valid?" every few minutes. Cancel or l
 - Mode: **نصب روی دامنه مشتری**; business name, contact, plan, price; (optional) their domain for your notes.
 - Save, open the customer page, and copy the **license key** (`CFR-XXXX-XXXX-XXXX-XXXX`). The page also shows the exact `.env` lines.
 
-**B. On the customer's server** (you do it via SSH, or send them this):
+**B. Build the customer package** (on **your PC**, once per version — [details in 8.4](#84-the-customer-package-no-source-code)):
 
 ```bash
-$ git clone <repo-url> /opt/cofferant && cd /opt/cofferant
-$ MODE=standalone DOMAIN=menu.mycafe.ir LETSENCRYPT_EMAIL=owner@mycafe.ir \
-  LICENSE_KEY=CFR-XXXX-XXXX-XXXX-XXXX LICENSE_SERVER_URL=https://yourdomain.com \
-  ./scripts/bootstrap-vps.sh
+$ make release VERSION=1.0.0 LICENSE_SERVER_URL=https://yourdomain.com
+#  -> dist/release/cofferant-customer-1.0.0.tar.gz   (compiled, locked, no source code)
 ```
 
-What this does: installs Docker, creates `.env` (random secrets, `LICENSE_ENFORCE=1`, your key and server URL), builds and starts the app,
+**C. On the customer's server** (you do it via SSH, or send them the package and the key):
+
+```bash
+$ tar xzf cofferant-customer-1.0.0.tar.gz && cd cofferant-customer-1.0.0
+$ sudo ./install.sh                  # asks for: domain, email, license key
+```
+
+What this does: installs Docker if needed, loads the application, creates `.env` (random secrets, your key), starts the app,
 gets a certificate and configures nginx. At the end it prints the **admin username and password** for the café — hand them to the owner
 (they can change the password in **تنظیمات → تغییر رمز عبور**).
 
-**C. Check** (on that server):
+**D. Check** (on that server):
 
 ```bash
 $ make deploy-health HOST=https://menu.mycafe.ir
@@ -325,42 +330,77 @@ $ make deploy-health HOST=https://menu.mycafe.ir
 Open `https://menu.mycafe.ir/users/login/`, sign in, and the vendor panel should load. Back in your developer panel, the license page shows
 **آخرین بررسی** (last check) with their domain — proof the key is being verified.
 
-**D. Hand over:** the owner adds categories, products and tables and prints the QR sheets.
+**E. Hand over:** the owner adds categories, products and tables and prints the QR sheets.
 
 ### 8.3 How the license control works
 
 | Event | What happens on the customer's install |
 |---|---|
-| Valid license | everything works; status cached ~5 minutes |
-| You **cancel** / it **expires** | within ~5 minutes the vendor panel and ordering lock (402 page); the public menu stays visible but read-only |
-| You **renew / reactivate** | unlocks within ~5 minutes, nothing to do on their side |
+| Valid license | everything works; a "yes" is re-checked about every **2 minutes** |
+| You **cancel** / it **expires** | within ~2 minutes the owner's panel shows the "subscription inactive" page, and **customers who scan a QR code or open the menu/site are redirected to a "contact the coffee shop" page** (café name, phone, Instagram, address) — the menu is not shown at all; online ordering stops |
+| You **renew / reactivate** | unlocks within about **15 seconds** (a "no" is only remembered that long). The lock page also has a **"بررسی دوباره"** button that checks instantly |
 | Your server is unreachable | the last good answer is trusted for **72 hours** (`LICENSE_GRACE_HOURS`), then it locks |
-| Key missing in `.env` while enforcement is on | locked |
+| License key missing | locked |
 
-⚠️ **Be honest with yourself about the limit:** the customer has the source code and their own server, so this is a *commercial* control,
-not unbreakable protection. A technical customer could remove the check. Pair it with a contract, and keep your platform domain reachable.
+The "contact the coffee shop" page uses the café's own details from **تنظیمات** (phone, Instagram, address); fill them in during hand-over.
+Sign-in pages stay reachable so the owner can see the lock page and press "check again".
 
-### 8.4 Giving access to the code
+### 8.4 The customer package (no source code)
 
-Choose one:
-- Add the customer's server as a **read-only deploy key** on your Git repository (Settings → Deploy keys), or
-- send a snapshot: on your PC `git archive --format=tar.gz -o cofferant.tar.gz HEAD`, then `scp` it and extract into `/opt/cofferant`, or
-- for a tiny server: `make images-bundle` on your PC, send `dist/cofferant-images.tar.gz` **and** the snapshot, then there `make load-images && make up-prebuilt` (after `./scripts/init-env.sh`, see 8.5).
-
-### 8.5 Manual alternative to the bootstrap script
+**Do not give a customer your repository.** `git clone` hands over every readable source file. Build a customer package instead:
 
 ```bash
-$ MODE=standalone DOMAIN=menu.mycafe.ir LETSENCRYPT_EMAIL=owner@mycafe.ir \
-  LICENSE_KEY=CFR-… LICENSE_SERVER_URL=https://yourdomain.com make env      # creates .env
-$ make up                                                                    # build + start
-$ make ssl                                                                   # certificate + nginx
+$ make release VERSION=1.0.0 LICENSE_SERVER_URL=https://yourdomain.com
 ```
+
+What the package contains and guarantees:
+
+| | |
+|---|---|
+| **No source code** | the image holds compiled bytecode only; every `.py` file (except the tiny `manage.py`) is removed, tests/docs/packaging are not included. The build checks this and fails if any source is left. |
+| **Edition lock** | the build is the *standalone* edition: it **cannot be switched to platform mode**, **cannot run with license checks off**, whatever the customer writes in `.env` |
+| **Baked-in license server** | `LICENSE_SERVER_URL` is part of the image; setting another address in `.env` is ignored, so a fake "always valid" server cannot be pointed at |
+| **Installer** | `install.sh` asks for domain, email and key, installs Docker, loads the image, runs the bootstrap (certificate + nginx) |
+| **Customer README** | `README.txt` in English and Persian: install, update, backup, license behaviour |
+| **Shell scripts** | the helper scripts are included (they contain no business logic) so the customer can run `make health`, `make backup`, etc. |
+
+I tested the real thing with two containers (a platform and a customer built from this image): valid → works; cancelled → owner locked, menu/QR and home
+redirect to the contact page; reactivated → unlocked after ~15 s; and with `DEPLOYMENT_MODE=platform`, `LICENSE_ENFORCE=0` and a fake `LICENSE_SERVER_URL`
+in the environment the build stayed standalone, enforced, and used the baked-in server.
+
+**Updating a customer:** build a new version (`make release VERSION=1.1.0 …`), send them the new `.tar.gz` (or just `cofferant-images.tar.gz`
+from inside it). On their server: `make update FILE=/path/to/cofferant-images.tar.gz` — it takes a backup first, then installs the new version; data is kept.
+Data migrations run automatically at start.
+
+Notes:
+- `make release` also tags the image `cofferant-app:latest` on your PC; run `make up` afterwards for your own development build.
+- Pass `PLATFORM=linux/arm64` if the customer's server is ARM.
+- You still need the platform address (`LICENSE_SERVER_URL`) to stay reachable over HTTPS, and to keep it fixed — it is baked into every released version.
+  If you ever change your platform domain, release a new version (`change-domain` keeps the old one working as an alias meanwhile).
+
+⚠️ **Honest limits.** Bytecode can be decompiled by a determined person with time and skill; templates, CSS and JavaScript are readable; the customer
+controls their server. The build removes the easy bypasses (flipping settings, reading and editing the source, a fake server) and makes any bypass a
+deliberate act. Combine it with: a **contract** (no reselling, no hosting for third parties, no removing the license check), **updates only from you**
+(that is your leverage), and logs — the developer panel shows each install's last check time and domain.
+
+### 8.5 If you run the server for the customer yourself
+
+When *you* control the machine (you pay for it, you have the only SSH key), cloning the repository there is fine:
+
+```bash
+$ git clone <repo-url> /opt/cofferant && cd /opt/cofferant
+$ MODE=standalone DOMAIN=menu.mycafe.ir LETSENCRYPT_EMAIL=owner@mycafe.ir \
+  LICENSE_KEY=CFR-XXXX-XXXX-XXXX-XXXX LICENSE_SERVER_URL=https://yourdomain.com \
+  ./scripts/bootstrap-vps.sh
+```
+
+(In that setup the license can be changed by whoever edits `.env`, so use it only where you hold the keys.)
 
 ### 8.6 Looking after a standalone customer
 
 | Task | Command (on their server) |
 |---|---|
-| Update to the new version | `make backup && make update` |
+| Update to the new version | send the new package; `make update FILE=/path/to/cofferant-images.tar.gz` (backs up first) |
 | Logs | `make logs` |
 | Health | `make health` |
 | Their backups | automatic every 12 h in `/app/backups`; recommend `make backup-remote-setup …` |

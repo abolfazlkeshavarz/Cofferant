@@ -1,0 +1,58 @@
+# syntax=docker/dockerfile:1
+#
+# CUSTOMER RELEASE image (built by `make release`, never by the customer).
+#
+#   * all Python code is compiled to bytecode and the .py sources are deleted
+#   * the build is locked to the "standalone" edition (config/edition.py): it cannot become a platform,
+#     cannot run without license checks and verifies licenses only against LICENSE_SERVER_URL given here
+#   * tests, docs, packaging and deploy scripts are not part of the image
+#
+# Bytecode is not encryption: a determined person can still decompile it. It removes casual reading and
+# editing, and the edition lock removes the "just change one setting" bypasses. Keep your contract in place.
+
+FROM python:3.12-slim AS build
+ARG LICENSE_SERVER_URL
+ARG VERSION=dev
+WORKDIR /src
+COPY . .
+RUN test -n "$LICENSE_SERVER_URL" || { echo "build-arg LICENSE_SERVER_URL is required" >&2; exit 1; }
+RUN printf 'EDITION = "standalone"\nLOCKED_LICENSE_SERVER_URL = "%s"\nVERSION = "%s"\n' "$LICENSE_SERVER_URL" "$VERSION" > config/edition.py \
+ && python -m compileall -b -q . \
+ && find . -name "tests.pyc" -delete \
+ && find . -name "*.py" ! -name "manage.py" -delete \
+ && find . -name "__pycache__" -type d -prune -exec rm -rf {} + \
+ && rm -rf docs scripts packaging deploy README.md Makefile Dockerfile Dockerfile.release docker-compose.yml .env.example .dockerignore .gitattributes .gitignore
+
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DJANGO_DEBUG=0 \
+    DATA_DIR=/app/data \
+    DB_PATH=/app/data/db.sqlite3 \
+    MEDIA_ROOT=/app/media \
+    BACKUP_DIR=/app/backups
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /src/requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY --from=build /src /app
+
+RUN useradd -m -u 10001 app \
+    && mkdir -p /app/data /app/media /app/staticfiles /app/backups \
+    && mkdir -p /home/app/.ssh && chmod 700 /home/app/.ssh && chown app:app /home/app/.ssh \
+    && chmod +x /app/docker/entrypoint.sh \
+    && chown -R app:app /app/data /app/media /app/staticfiles /app/backups
+USER app
+
+EXPOSE 8000
+HEALTHCHECK --interval=15s --timeout=4s --start-period=40s --retries=5 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status == 200 else 1)"
+
+ENTRYPOINT ["/app/docker/entrypoint.sh"]

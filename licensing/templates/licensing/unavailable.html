@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}در دسترس نیست · {{ venue.name }}{% endblock %}
+{% block body %}
+<div class="auth">
+  <div class="auth-card text-center">
+    <div class="card">
+      <div style="font-size:3rem" aria-hidden="true">☕</div>
+      <h2>{{ venue.name }}</h2>
+      <p class="muted">منو و سفارش آنلاین این مجموعه فعلاً در دسترس نیست.<br>لطفاً مستقیماً با کافه تماس بگیرید یا سفارش خود را حضوری ثبت کنید.</p>
+      {% if venue.phone %}<a class="btn btn-primary btn-block btn-lg" href="tel:{{ venue.phone }}"><svg class="icon"><use href="#i-phone"/></svg><span class="ltr">{{ venue.phone }}</span></a>{% endif %}
+      {% if venue.instagram %}<p class="mt-1 mb-0 small muted">اینستاگرام: <b class="ltr">{{ venue.instagram }}</b></p>{% endif %}
+      {% if venue.address %}<p class="mt-1 mb-0 small muted">{{ venue.address }}</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

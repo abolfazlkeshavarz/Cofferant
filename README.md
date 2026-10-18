@@ -27,7 +27,7 @@ subscription licenses and can cancel a customer's panel at any moment.
 - **Edit subscription prices** in the panel; they feed the sales page and the new-customer form.
 - **Trash**: delete a customer to the trash (their site and panel go offline, data is kept), restore any time, or purge permanently after typing the business name.
 - **Automatic backups every 12 hours** of every database, every hosted customer and all photos; browse and download them in the panel.
-- Cancelling takes effect within seconds: the vendor panel and ordering stop working (the public menu stays visible but read-only). Data is kept; reactivating restores everything.
+- Cancelling takes effect within seconds: the vendor panel locks and customers who scan a QR code or open the menu are redirected to a "contact the coffee shop" page (the menu is not shown). Data is kept; reactivating unlocks within seconds.
 
 ## Two ways to sell it
 
@@ -66,7 +66,7 @@ MODE=standalone DOMAIN=menu.mycafe.com LETSENCRYPT_EMAIL=owner@mycafe.com \
 LICENSE_KEY=CFR-XXXX-XXXX-XXXX-XXXX LICENSE_SERVER_URL=https://yourdomain.com \
 ./scripts/bootstrap-vps.sh
 ```
-If you cancel the license (or it expires) their panel locks within ~5 minutes. *Honest limitation:* a self-hosted customer has the
+If you cancel the license (or it expires) their panel locks and their menu/QR codes redirect to a contact page within ~2 minutes; reactivation unlocks in about 15 seconds. Do **not** hand customers the repository: build a compiled, locked package with `make release` (see docs/DEVELOPER-GUIDE.md §8.4). *Honest limitation:* a self-hosted customer has the
 source code, so this is a commercial control, not unbreakable DRM — pair it with a contract. Hosted customers (A) cannot bypass it.
 
 ### Backups, changing domain, moving to a new server

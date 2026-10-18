@@ -11,12 +11,13 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from management.services import throttled
 
-from . import backup, services
+from . import backup, checker, services
 from .forms import (CancelForm, DomainForm, LicenseCreateForm, OwnerPasswordForm,
                     PricesForm, PurgeForm, RenewForm)
 from .models import PLAN_CHOICES, License
@@ -264,6 +265,24 @@ def verify_api(request):
         "valid": lic.is_valid, "status": lic.state, "plan": lic.plan, "business": lic.business_name,
         "expires_at": lic.expires_at.isoformat() if lic.expires_at else None, "days_left": lic.days_left,
     })
+
+
+def unavailable(request):
+    """What customers see (QR code, menu link, …) while the café's subscription is inactive."""
+    if request.license.valid:
+        return redirect("/")
+    return render(request, "licensing/unavailable.html", status=503)
+
+
+@require_POST
+def recheck(request):
+    """'Check again' button on the lock page: forget cached answers so a renewal is noticed immediately."""
+    if not throttled(request, "recheck", "x", limit=10, window=60):
+        checker.reset()
+    nxt = request.POST.get("next", "/vendor/")
+    if not url_has_allowed_host_and_scheme(nxt, {request.get_host()}, request.is_secure()):
+        nxt = "/vendor/"
+    return redirect(nxt)
 
 
 def healthz(request):

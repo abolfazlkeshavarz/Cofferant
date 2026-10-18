@@ -20,6 +20,12 @@ from .tenancy import current_tenant
 
 log = logging.getLogger("cofferant")
 
+# How long a verified answer is trusted. A "no" is remembered only briefly, so that renewing or
+# reactivating a customer takes effect within seconds instead of minutes; a "yes" is re-checked often
+# enough that a cancellation bites within a couple of minutes.
+VALID_TTL = 120
+INVALID_TTL = 15
+
 MESSAGES = {
     "cancelled": "اشتراک این مجموعه توسط ارائه‌دهنده لغو شده است.",
     "expired": "اشتراک این مجموعه به پایان رسیده است.",
@@ -78,6 +84,14 @@ def slug_for_domain(host):
     return slug
 
 
+def reset():
+    """Forget cached answers for the current venue so the next request asks again (the 'check again' button)."""
+    slug = current_tenant.get()
+    if slug:
+        cache.delete(f"lic:slug:{slug}")
+    cache.delete("lic:remote:fresh")
+
+
 def invalidate(license_obj, *extra_domains):
     if license_obj.slug:
         cache.delete(f"lic:slug:{license_obj.slug}")
@@ -115,7 +129,7 @@ def remote_state(host=""):
             plan=data.get("plan", ""), business=data.get("business", ""),
             expires_at=expires, days_left=data.get("days_left"),
         )
-        cache.set(fresh_key, state, 300)
+        cache.set(fresh_key, state, VALID_TTL if state.valid else INVALID_TTL)
         if state.valid:
             cache.set(good_key, (timezone.now(), state), None)
         else:

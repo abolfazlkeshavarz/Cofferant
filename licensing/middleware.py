@@ -1,14 +1,18 @@
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 
 from . import checker, tenancy
 
-# Paths that must keep working even when a license is cancelled/expired
-OPEN_PREFIXES = ("/static/", "/media/", "/api/license/", "/developer/", "/healthz", "/favicon.ico")
-# The vendor's "working" surface, locked when the license is not valid
-LOCKED_PREFIXES = ("/vendor/", "/admin/")
-LOCKED_API = ("/management/api/orders/create/", "/management/api/requests/create/", "/management/pay/")
+# Paths that keep working even when the license is not valid
+OPEN_PREFIXES = ("/static/", "/media/", "/api/license/", "/license/", "/developer/", "/healthz", "/favicon.ico",
+                 "/users/login/", "/users/logout/")
+# The owner's working surface: shows the "subscription inactive" page
+OWNER_PREFIXES = ("/vendor/", "/admin/")
+# Everything else is customer-facing (menu, QR codes, tracking, payment, landing pages): while the license
+# is not valid those visitors are sent to a "contact the coffee shop" page and never see the menu.
+UNAVAILABLE_URL = "/license/unavailable/"
+CUSTOMER_MESSAGE = "این مجموعه موقتاً در دسترس نیست؛ لطفاً با کافه تماس بگیرید."
 
 
 LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
@@ -52,7 +56,7 @@ class TenantMiddleware:
 
 
 class LicenseMiddleware:
-    """Blocks the vendor panel and ordering when the venue's license is not valid."""
+    """When the venue's license is not valid: lock the owner's panel and send customers to a contact page."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -67,8 +71,11 @@ class LicenseMiddleware:
                 or "application/json" in request.headers.get("Accept", "")
                 or request.content_type == "application/json"
             )
-            if path.startswith(LOCKED_API) or (path.startswith(LOCKED_PREFIXES) and wants_json):
-                return JsonResponse({"ok": False, "error": state.message or "سرویس غیرفعال است."}, status=402)
-            if path.startswith(LOCKED_PREFIXES):
+            if path.startswith(OWNER_PREFIXES):
+                if wants_json:
+                    return JsonResponse({"ok": False, "error": state.message or "سرویس غیرفعال است."}, status=402)
                 return render(request, "licensing/blocked.html", {"state": state}, status=402)
+            if wants_json or path.startswith("/management/api/"):
+                return JsonResponse({"ok": False, "error": CUSTOMER_MESSAGE, "redirect": UNAVAILABLE_URL}, status=402)
+            return redirect(UNAVAILABLE_URL)
         return self.get_response(request)

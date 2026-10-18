@@ -8,6 +8,10 @@
       <h2>پنل مدیریت غیرفعال است</h2>
       <p class="muted">{{ state.message|default:"اشتراک این مجموعه فعال نیست." }}</p>
       <p class="small muted">برای فعال‌سازی دوباره، با ارائه‌دهنده سرویس تماس بگیرید. اطلاعات شما نگهداری می‌شود و پس از تمدید، همه‌چیز همان‌طور که بود بازمی‌گردد.</p>
+      <form method="post" action="{% url 'license_recheck' %}" class="mb-2">{% csrf_token %}
+        <input type="hidden" name="next" value="/vendor/">
+        <button class="btn btn-primary btn-block" type="submit">بررسی دوباره (بعد از تمدید)</button>
+      </form>
       <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-block" type="submit">خروج از حساب</button></form>
     </div>
   </div>

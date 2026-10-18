@@ -133,14 +133,93 @@ class StandaloneEnforcementTests(TestCase):
     def test_not_enforced_by_default(self):
         self.assertEqual(self.client.get(reverse("vendor:dashboard")).status_code, 200)
 
-    @override_settings(LICENSE_ENFORCE=True, LICENSE_KEY="K", LICENSE_SERVER_URL="https://dev.example")
-    def test_menu_stays_viewable_but_ordering_disabled(self):
+    REMOTE = dict(LICENSE_ENFORCE=True, LICENSE_KEY="K", LICENSE_SERVER_URL="https://dev.example")
+
+    @override_settings(**REMOTE)
+    def test_menu_qr_and_public_pages_redirect_to_the_contact_page_when_locked(self):
+        from management.models import Table, Venue
+        v = Venue.load()
+        v.name, v.phone = "کافه تست", "021-1234"
+        v.save()
+        t = Table.objects.create(number="1")
+        with self._remote(valid=False, status="cancelled"):
+            for url in (reverse("public_menu", args=[t.qr_slug]), reverse("order_track", args=["abc"]), "/",
+                        reverse("products_list"), reverse("about")):
+                r = self.client.get(url)
+                self.assertEqual((r.status_code, r["Location"]), (302, "/license/unavailable/"), url)
+            page = self.client.get("/license/unavailable/")
+            self.assertEqual(page.status_code, 503)
+            self.assertContains(page, "021-1234", status_code=503)
+            self.assertContains(page, "کافه تست", status_code=503)
+            self.assertNotContains(page, "cart-bar", status_code=503)
+            # API callers get a clear refusal that names the redirect target
+            r = self.client.post(reverse("quote"), "{}", content_type="application/json")
+            self.assertEqual(r.status_code, 402)
+            self.assertEqual(r.json()["redirect"], "/license/unavailable/")
+            # the owner can still reach the sign-in page
+            self.assertEqual(Client().get(reverse("login")).status_code, 200)
+
+    @override_settings(**REMOTE)
+    def test_menu_works_normally_when_the_license_is_valid(self):
         from management.models import Table
         t = Table.objects.create(number="1")
-        with self._remote(valid=False, status="expired"):
+        with self._remote(valid=True, status="active"):
             r = self.client.get(reverse("public_menu", args=[t.qr_slug]))
             self.assertEqual(r.status_code, 200)
-            self.assertNotContains(r, 'id="cart-bar"')
+            self.assertContains(r, 'id="cart-bar"')
+
+    def test_unavailable_page_bounces_home_when_nothing_is_wrong(self):
+        r = self.client.get("/license/unavailable/")
+        self.assertEqual((r.status_code, r["Location"]), (302, "/"))
+
+    @override_settings(**REMOTE)
+    def test_a_no_is_remembered_briefly_and_a_yes_for_longer(self):
+        from . import checker
+
+        class Spy:
+            def __init__(self):
+                self.calls = []
+
+            def get(self, *a, **k):
+                return cache.get(*a, **k)
+
+            def set(self, key, value, timeout=None):
+                self.calls.append((key, value, timeout))
+                cache.set(key, value, timeout)
+
+            def delete(self, *a):
+                cache.delete(*a)
+
+        spy = Spy()
+        with mock.patch.object(checker, "cache", spy):
+            with self._remote(valid=False, status="cancelled"):
+                checker.remote_state("h")
+            cache.delete("lic:remote:fresh")
+            with self._remote(valid=True, status="active"):
+                checker.remote_state("h")
+        ttl = {value.valid: timeout for key, value, timeout in spy.calls if key == "lic:remote:fresh"}
+        self.assertEqual(ttl, {False: checker.INVALID_TTL, True: checker.VALID_TTL})
+        self.assertLessEqual(checker.INVALID_TTL, 20)  # a renewal must not wait minutes
+        self.assertGreater(checker.VALID_TTL, checker.INVALID_TTL)
+
+    @override_settings(**REMOTE)
+    def test_check_again_button_picks_up_a_renewal_immediately(self):
+        with self._remote(valid=False, status="cancelled"):
+            blocked = self.client.get(reverse("vendor:dashboard"))
+            self.assertEqual(blocked.status_code, 402)
+            self.assertContains(blocked, reverse("license_recheck"), status_code=402)  # the button is on the page
+        with self._remote(valid=True, status="active"):
+            # inside the short window the "no" is still remembered ...
+            self.assertEqual(self.client.get(reverse("vendor:dashboard")).status_code, 402)
+            # ... until the owner presses "check again"
+            r = self.client.post(reverse("license_recheck"), {"next": "/vendor/"})
+            self.assertEqual((r.status_code, r["Location"]), (302, "/vendor/"))
+            self.assertEqual(self.client.get(reverse("vendor:dashboard")).status_code, 200)
+
+    def test_check_again_ignores_foreign_redirect_targets(self):
+        r = self.client.post(reverse("license_recheck"), {"next": "https://evil.example/"})
+        self.assertEqual(r["Location"], "/vendor/")
+        self.assertEqual(self.client.get(reverse("license_recheck")).status_code, 405)
 
 
 class PlatformTenancyTests(unittest.TestCase):
@@ -231,7 +310,11 @@ class PlatformTenancyTests(unittest.TestCase):
             self.assertEqual(r.status_code, 402, path)
         r = owner_client.post(reverse("create_order"), "{}", content_type="application/json", HTTP_HOST=self.host("alpha"))
         self.assertEqual(r.status_code, 402)
-        self.assertEqual(owner_client.get("/", HTTP_HOST=self.host("alpha")).status_code, 200)  # public site still up
+        # customers get the "contact the coffee shop" page instead of the site, menu and QR codes
+        for url in ("/", "/management/t/anything/", "/users/products/"):
+            r = Client().get(url, HTTP_HOST=self.host("alpha"))
+            self.assertEqual((r.status_code, r["Location"]), (302, "/license/unavailable/"), url)
+        self.assertEqual(Client().get("/license/unavailable/", HTTP_HOST=self.host("alpha")).status_code, 503)
 
         dev_client.post(reverse("developer:reactivate", args=[lic.pk]), HTTP_HOST="example.test")
         self.assertEqual(owner_client.get(reverse("vendor:dashboard"), HTTP_HOST=self.host("alpha")).status_code, 200)
