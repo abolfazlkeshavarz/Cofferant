@@ -1,4 +1,4 @@
-import json
+﻿import json
 import shutil
 import unittest
 import tempfile
@@ -549,6 +549,31 @@ class PlatformTenancyTests(unittest.TestCase):
             cache.clear()
             self.assertEqual(Client().get("/", HTTP_HOST="alpha.example.test").status_code, 404)
 
+    def test_domain_errors_say_why(self):
+        a, _ = self.create("alpha", "کافه آلفا")
+        b, _ = self.create("beta", "کافه بتا")
+        self.attach_domain(a, "menu.alpha-cafe.ir")
+
+        def error_for(lic, domain):
+            from .forms import DomainForm
+            f = DomainForm({"domain": domain}, instance=lic)
+            self.assertFalse(f.is_valid(), domain)
+            return " ".join(f.errors["domain"])
+
+        # held by another customer: the message names them
+        self.assertIn("کافه آلفا", error_for(b, "menu.alpha-cafe.ir"))
+        # held by a customer in the trash: says so
+        self.client.post(reverse("developer:trash", args=[a.pk]), HTTP_HOST="example.test")
+        msg = error_for(b, "menu.alpha-cafe.ir")
+        self.assertIn("کافه آلفا", msg)
+        self.assertIn("سطل زباله", msg)
+        # a leftover platform alias is explained, with the command that fixes it
+        with override_settings(PLATFORM_ALIAS_DOMAINS=["old-platform.ir"]):
+            msg = error_for(b, "old-platform.ir")
+            self.assertIn("PLATFORM_ALIAS_DOMAINS", msg)
+            self.assertIn("DROP_OLD=1", msg)
+            self.assertIn("PLATFORM_ALIAS_DOMAINS", error_for(b, "shop.old-platform.ir"))
+
 
 # ---------------------------------------------------------------------------
 # Off-server backup copies
@@ -626,4 +651,5 @@ class OffServerBackupTests(TestCase):
             html = self.client.get(reverse("developer:backups"), HTTP_HOST="example.test").content.decode()
         self.assertIn("backup@vault.example.com:/srv/cofferant", html)
         self.assertIn("connection works", html)
+
 

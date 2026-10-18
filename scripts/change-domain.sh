@@ -30,7 +30,20 @@ valid_hostname "$NEW" || { echo "'$NEW' is not a valid domain name." >&2; exit 1
 load_env .env
 MODE="${DEPLOYMENT_MODE:-standalone}"
 OLD="${APP_DOMAIN:-}"
-if [[ "$NEW" == "$OLD" ]]; then echo "Already using $NEW — nothing to do."; exit 0; fi
+if [[ "$NEW" == "$OLD" ]]; then
+  # Same domain again: with --drop-old this clears leftover aliases (e.g. a domain you tried earlier and
+  # went back from), which otherwise keep being treated as the platform's own address.
+  if [[ "$DROP" == "1" && "$MODE" == "platform" && -n "${PLATFORM_ALIAS_DOMAINS:-}" ]]; then
+    echo "Already on $NEW; clearing the old aliases: ${PLATFORM_ALIAS_DOMAINS}"
+    cp .env ".env.bak-$(date +%Y%m%d-%H%M%S)"
+    apply_domain_env .env "$NEW" "$MODE" "" 0
+    load_env .env
+    [[ "${SKIP_TLS:-0}" == "1" ]] || "${DOCKER:-docker}" compose up -d
+    echo "Done. Those domains are no longer treated as the platform's own."
+    exit 0
+  fi
+  echo "Already using $NEW — nothing to do."; exit 0
+fi
 
 echo "Mode: $MODE   Old domain: ${OLD:-none}   New domain: $NEW"
 

@@ -24,11 +24,18 @@ def clean_domain_value(raw, instance=None):
     root = settings.PLATFORM_DOMAIN
     if value == root or value.endswith("." + root):
         raise forms.ValidationError("این دامنه متعلق به خود پلتفرم است؛ دامنه جداگانه مشتری را وارد کنید.")
+    for alias in settings.PLATFORM_ALIAS_DOMAINS:
+        if value == alias or value.endswith("." + alias):
+            raise forms.ValidationError(
+                f"«{alias}» هنوز به‌عنوان دامنه قدیمی پلتفرم فعال است (PLATFORM_ALIAS_DOMAINS در فایل .env). "
+                f"اگر دیگر لازم نیست، روی سرور بزنید: make change-domain DOMAIN={root} DROP_OLD=1")
     qs = License.objects.filter(domain__iexact=value)
     if instance is not None and instance.pk:
         qs = qs.exclude(pk=instance.pk)
-    if qs.exists():
-        raise forms.ValidationError("این دامنه قبلاً برای مشتری دیگری ثبت شده است.")
+    other = qs.first()
+    if other is not None:
+        where = " (در سطل زباله است؛ از آنجا حذف نهایی یا دامنه‌اش را خالی کنید)" if other.in_trash else ""
+        raise forms.ValidationError(f"این دامنه قبلاً برای «{other.business_name}» ثبت شده است{where}.")
     return value
 
 
