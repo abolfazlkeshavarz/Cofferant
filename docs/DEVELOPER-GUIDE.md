@@ -618,6 +618,8 @@ with tenancy.use_tenant('homecafe'):
 | App container "unhealthy" | crash on start (migration/permission/disk) | `make logs`; free disk space; `docker compose up -d --force-recreate app` |
 | `no space left on device` | big backups/photos/old images | `docker system df`; lower `BACKUP_KEEP`; `docker image prune` |
 | Changed `.env` but nothing changed | containers not recreated | `docker compose up -d --force-recreate app backup` |
+| `Bind for 127.0.0.1:8081 failed: port is already allocated` | another program (e.g. another project) uses that local port; with an old `.env` the script kept the stored port | on a test/new folder: `docker compose down -v && rm .env`, then `WEB_PORT=8082 …bootstrap-vps.sh`. (Updated scripts refuse a mismatched `.env` and honour an explicit `WEB_PORT`.) Check free ports with `ss -ltn | grep :8082` |
+| Bootstrap said `.env already exists` and ignored your mode / domain / license key | a leftover `.env` from an earlier try | same: remove the disposable `.env`; updated scripts stop with a clear message instead |
 | Orders return "too many requests" | rate limit (`ORDER_RATE_LIMIT` per window) | raise `ORDER_RATE_LIMIT` in `.env`, recreate |
 | Off-server backup shows an error | key not authorised / wrong user/path / port | `make backup-remote-test`; re-run `make backup-remote-setup`; check `BACKUP_REMOTE_PORT` |
 | Standalone customer locked but license is valid | their server cannot reach your server (firewall, wrong URL) or clock very wrong | from their server: `curl -s -X POST -H 'Content-Type: application/json' -d '{"key":"CFR-…"}' https://yourdomain.com/api/license/verify/` |

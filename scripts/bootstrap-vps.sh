@@ -94,7 +94,8 @@ if [[ "$MODE" == "standalone" && -z "${LICENSE_KEY:-}" && ! -f .env ]]; then
   echo "but a customer install should pass LICENSE_KEY and LICENSE_SERVER_URL from your developer panel."
 fi
 
-if [[ -z "${WEB_PORT:-}" ]]; then
+WEB_PORT_REQUESTED="${WEB_PORT:-}"   # a port the caller asked for explicitly
+if [[ ! -f .env && -z "${WEB_PORT:-}" ]]; then
   WEB_PORT="$(find_free_port 8081)"
   if [[ -d /etc/nginx || -x /usr/sbin/nginx ]]; then
     echo ""
@@ -113,8 +114,41 @@ if [[ ! -f .env ]]; then
   set_env_value .env WEB_PORT "$WEB_PORT"
   GENERATED_ENV=1
 else
-  echo "==> .env already exists — leaving it as is"
+  echo "==> .env already exists here — keeping its secrets"
+  env_get() { grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r' || true; }
+
+  # What you asked for must match what is already configured, otherwise you would silently
+  # deploy the OLD settings (this is how a leftover test .env once hid a new license key).
+  mismatch=()
+  have_mode="$(env_get DEPLOYMENT_MODE)"; have_mode="${have_mode:-standalone}"
+  [[ "$have_mode" == "$MODE" ]] || mismatch+=("mode: .env has '$have_mode', you asked for '$MODE'")
+  [[ "$(env_get APP_DOMAIN)" == "$DOMAIN" ]] || mismatch+=("domain: .env has '$(env_get APP_DOMAIN)', you asked for '$DOMAIN'")
+  if [[ -n "${LICENSE_KEY:-}" && "$(env_get LICENSE_KEY)" != "$LICENSE_KEY" ]]; then
+    mismatch+=("license key: .env has '$(env_get LICENSE_KEY)', you passed a different one")
+  fi
+  if ((${#mismatch[@]})); then
+    echo "" >&2
+    echo "This folder already has a .env that does not match what you asked for:" >&2
+    printf '   - %s\n' "${mismatch[@]}" >&2
+    echo "" >&2
+    echo "If it is a leftover from an earlier test, remove it and run again:" >&2
+    echo "   docker compose down -v && rm .env" >&2
+    echo "(only do that where the data is disposable). To change the domain of a live install use: make change-domain DOMAIN=..." >&2
+    exit 1
+  fi
+
+  # An explicitly requested local port wins over the one stored in .env
+  if [[ -n "$WEB_PORT_REQUESTED" && "$(env_get WEB_PORT)" != "$WEB_PORT_REQUESTED" ]]; then
+    echo "==> Using local port ${WEB_PORT_REQUESTED} (was $(env_get WEB_PORT))"
+    set_env_value .env WEB_PORT "$WEB_PORT_REQUESTED"
+  fi
   load_env .env
+  # The stored port is taken by something else and our app is not the one using it?
+  if ! "${DOCKER:-docker}" compose ps -q app 2>/dev/null | grep -q . && port_in_use "${WEB_PORT:-8081}"; then
+    echo "Port ${WEB_PORT:-8081} (from .env) is already used by another program on this server." >&2
+    echo "Pick a free port and run again, e.g.:  WEB_PORT=$(find_free_port 8082) $0" >&2
+    exit 1
+  fi
 fi
 
 [[ "$REAL_USER" != "root" ]] && chown "$REAL_USER":"$REAL_USER" .env
