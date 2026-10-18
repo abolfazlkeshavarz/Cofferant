@@ -4,6 +4,8 @@ Persian (RTL) Django app. Customers scan a table QR, order from a mobile menu, p
 staff run the kitchen from a live board and see sales analytics. Built to be **sold**: a developer panel issues
 subscription licenses and can cancel a customer's panel at any moment.
 
+> **Operating, selling, backing up, moving and repairing the system:** see the full runbook in [docs/DEVELOPER-GUIDE.md](docs/DEVELOPER-GUIDE.md).
+
 ## Features
 
 **For the café's customers**
