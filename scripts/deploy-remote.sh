@@ -41,6 +41,24 @@ SSH_ARGS=(-p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o
 [[ -n "${SSH_KEY:-}" ]] && SSH_ARGS+=(-i "$SSH_KEY")
 remote() { ssh "${SSH_ARGS[@]}" "$HOST" "$@"; }
 
+# Copy the small support files (compose, Makefile, scripts, nginx template) into a staging folder and convert
+# them to Unix line endings. On Windows the working copy usually has CRLF; a script with CRLF fails on Linux with
+# "/usr/bin/env: 'bash\r': No such file or directory".
+stage_support_files() {
+  local dest="$1"
+  mkdir -p "$dest/deploy/nginx"
+  cp docker-compose.yml Makefile .env.example "$dest/"
+  cp -R scripts "$dest/"
+  cp deploy/nginx/app.conf.template "$dest/deploy/nginx/"
+  find "$dest" -type f \( -name '*.sh' -o -name 'Makefile' -o -name '*.yml' -o -name '*.template' -o -name '.env.example' \) \
+    -exec sed -i 's/\r$//' {} +
+  chmod +x "$dest"/scripts/*.sh
+}
+
+if [[ -n "${STAGE_ONLY:-}" ]]; then   # debugging aid: just produce the cleaned files locally
+  stage_support_files "$STAGE_ONLY"; echo "staged into $STAGE_ONLY"; exit 0
+fi
+
 echo "==> Checking the SSH connection to ${HOST}"
 remote "echo connected" >/dev/null 2>&1 || {
   echo "Cannot log in to ${HOST} with a key. Set up key login first:  ssh-copy-id ${HOST}   (or pass SSH_KEY=path)" >&2
@@ -90,7 +108,9 @@ echo "    $(du -h "$OUT/$TAR" | cut -f1)  $OUT/$TAR"
 echo "==> Uploading to ${HOST}:${DIR}"
 remote "mkdir -p '$DIR/incoming'"
 # small support files (compose, Makefile, scripts) - never .env, data, media or backups
-tar -czf - docker-compose.yml Makefile .env.example scripts deploy | remote "cd '$DIR' && tar xzf -"
+STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
+stage_support_files "$STAGE"
+tar -czf - -C "$STAGE" . | remote "cd '$DIR' && tar xzf -"
 remote "cat > '$DIR/incoming/$TAR.part'" < "$OUT/$TAR"
 LOCAL_SUM="$( (sha256sum "$OUT/$TAR" 2>/dev/null || shasum -a 256 "$OUT/$TAR") | cut -d' ' -f1)"
 REMOTE_SUM="$(remote "sha256sum '$DIR/incoming/$TAR.part'" | cut -d' ' -f1)"

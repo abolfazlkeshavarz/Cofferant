@@ -81,6 +81,9 @@ for f in scripts/*.sh; do
 done
 sed "s|@LICENSE_SERVER_URL@|${LICENSE_SERVER_URL}|" packaging/install.sh.template > "$OUT/$PKG/install.sh"
 cp packaging/README-CUSTOMER.txt "$OUT/$PKG/README.txt"
+# Unix line endings everywhere (a Windows working copy has CRLF, which breaks scripts on Linux)
+find "$OUT/$PKG" -type f \( -name '*.sh' -o -name 'Makefile' -o -name '*.yml' -o -name '*.template' -o -name '.env.example' -o -name '*.txt' \) \
+  -exec sed -i 's/\r$//' {} +
 chmod +x "$OUT/$PKG/install.sh" "$OUT/$PKG"/scripts/*.sh
 
 echo "==> Packing"

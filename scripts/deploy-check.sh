@@ -85,6 +85,18 @@ fi
 for f in scripts/*.sh docker/entrypoint.sh; do bash -n "$f" 2>/dev/null || bad "syntax error in $f"; done
 ok "shell scripts parse"
 
+# Scripts that reach a Linux server must have Unix line endings: "bash\r: No such file or directory" otherwise.
+# (make deploy-remote / make release convert on the fly; this tells you if the repository itself is affected.)
+if [[ -n "$PY" ]]; then
+  crlf="$("$PY" - <<'PYEOF' 2>/dev/null
+import subprocess
+out = subprocess.run(["git", "ls-files", "--eol", "scripts", "docker", "packaging"], capture_output=True, text=True).stdout
+print(" ".join(l.split("\t")[-1] for l in out.splitlines() if l.split()[0] == "i/crlf"))
+PYEOF
+)"
+  [[ -z "${crlf// }" ]] && ok "shell scripts are committed with Unix line endings" || bad "scripts committed with Windows line endings: ${crlf}"
+fi
+
 echo ""
 echo "3. Repository hygiene"
 tracked_bad="$(git ls-files 2>/dev/null | grep -E '(^|/)(\.env|\.venv/|winenv/|node_modules/|dist/|data/|staticfiles/|media/)|\.sqlite3$|\.log$' | grep -v '\.env\.example' | head -5)"

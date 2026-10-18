@@ -47,6 +47,7 @@ COPY --from=build /src /app
 RUN useradd -m -u 10001 app \
     && mkdir -p /app/data /app/media /app/staticfiles /app/backups \
     && mkdir -p /home/app/.ssh && chmod 700 /home/app/.ssh && chown app:app /home/app/.ssh \
+    && sed -i 's/\r$//' /app/docker/*.sh \
     && chmod +x /app/docker/entrypoint.sh \
     && chown -R app:app /app/data /app/media /app/staticfiles /app/backups
 USER app
